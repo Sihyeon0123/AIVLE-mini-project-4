@@ -22,55 +22,54 @@ export default function LoginPage() {
         body: JSON.stringify({ id, pw }),
       });
 
-      // 무조건 먼저 JSON 파싱
+      // 헤더에서 토큰 먼저 꺼내기
+      const authHeader = res.headers.get('Authorization');
+      let token = null;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7); // "Bearer " 떼고 순수 토큰만 추출
+      }
+
       const result = await res.json();
       console.log('서버 응답:', result);
 
-      // HTTP 상태코드 + result.status 둘 다 활용해서 분기
-      if (res.ok && result.status === 'success') {
+      //if (res.ok && result.status === 'success')
+      if (res.ok) {
         alert('로그인 성공!');
 
-        // JWT 토큰 저장
-        if (result.token) {
-          sessionStorage.setItem('token', result.token);
+        if (token) {
+          sessionStorage.setItem('token', token);
         }
 
-        // 아이디 저장
+        // 아이디 저장 (백엔드 LoginResponse.userId)
         if (result.userId) {
           sessionStorage.setItem('userId', result.userId);
         } else {
           sessionStorage.setItem('userId', id);
         }
 
-        // 이름
-        if (result.name) {
-          sessionStorage.setItem('userName', result.name);
-        }
+        // 이름은 백엔드에서 안 내려줌 → 지금은 비워둘 수밖에 없음
+        // 나중에 백엔드가 name 내려주면 아래처럼 사용
+        // if (result.name) {
+        //   sessionStorage.setItem('userName', result.name);
+        // }
 
-        // 메인 페이지로 이동 (원하면 /myinfo로 유지해도 OK)
         router.push('/');
 
       } else {
-        // 여기서 오류 케이스 처리
-
-        // 1) 상태코드로 구분
+        // 오류 케이스
         if (res.status === 404) {
           alert(result.message || '등록되지 않은 아이디입니다.');
         } else if (res.status === 401) {
           alert(result.message || '비밀번호가 일치하지 않습니다.');
         } else {
-          // 그 외는 백엔드 메시지 우선 사용
           alert(result.message || '로그인에 실패했습니다.');
         }
       }
-
     } catch (error) {
       console.error('요청 중 오류 발생:', error);
-      // 실제 통신 자체가 안 될 때만 여기로 옴 (서버 꺼짐, CORS 등)
       alert('서버와 통신 중 오류가 발생했습니다.');
     }
   };
-
 
   return (
     <div className="page">
