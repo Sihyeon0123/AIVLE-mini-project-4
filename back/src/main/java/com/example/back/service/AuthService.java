@@ -136,25 +136,42 @@ public class AuthService {
 
         return tokens;
     }
-
+    
+    @Transactional
     public void logout(String token) {
         /**
          * 로그아웃 서비스 로직
-         * - JWT 토큰 검증만 수행
-         *   → 유효하지 않으면 예외 발생
+         *
+         * - Access Token에서 userId 추출
+         * - 저장된 Refresh Token 삭제
+         * - Access Token은 클라이언트 단에서 제거됨
          *
          * @param token 클라이언트 JWT Access Token
          */
+
         log.info("로그아웃 처리 시작: token={}", token);
 
-        try {
-            jwtUtil.getUserId(token);  // 유효성 검증
-            log.info("로그아웃 처리 완료: token={}", token);
+        String userId;
 
+        try {
+            // 1) 토큰 유효성 검사 + userId 추출
+            userId = jwtUtil.getUserId(token);
         } catch (Exception e) {
             log.warn("로그아웃 실패 - 유효하지 않은 토큰: token={}", token);
             throw new RuntimeException("유효하지 않은 토큰입니다.");
         }
+
+        try {
+            // 2) DB에 저장된 Refresh Token 삭제
+            refreshTokenRepository.deleteByUserId(userId);
+            log.info("저장된 Refresh Token 삭제 완료: userId={}", userId);
+
+        } catch (Exception e) {
+            log.error("Refresh Token 삭제 중 오류 발생: userId={}, error={}", userId, e.toString());
+            throw new RuntimeException("로그아웃 처리 중 오류가 발생했습니다.");
+        }
+
+        log.info("로그아웃 처리 완료: userId={}", userId);
     }
 
     @Transactional
