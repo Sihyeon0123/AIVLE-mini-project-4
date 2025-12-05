@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.back.DTO.LoginRequest;
 import com.example.back.DTO.SignupRequest;
+import com.example.back.DTO.UpdateRequest;
 import com.example.back.entity.RefreshToken;
 import com.example.back.entity.User;
 import com.example.back.jwt.JwtUtil;
@@ -172,6 +173,48 @@ public class AuthService {
         }
 
         log.info("로그아웃 처리 완료: userId={}", userId);
+    }
+    
+    @Transactional
+    @SuppressWarnings("null")
+    public void updateUser(String token, UpdateRequest req) {
+        /**
+         * 회원정보 수정 서비스 로직
+         * - token → userId 추출
+         * - 사용자 조회
+         * - 전달된 name, pw 중 존재하는 값만 업데이트
+         */
+
+        log.info("회원정보 수정 처리 시작");
+
+        // 1) JWT에서 userId 추출
+        String userId;
+        try {
+            userId = jwtUtil.getUserId(token);
+        } catch (Exception e) {
+            throw new RuntimeException("유효하지 않은 토큰입니다.");
+        }
+
+        // 2) 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        // 3) 수정할 필드만 업데이트
+        if (req.getName() != null && !req.getName().isBlank()) {
+            user.setName(req.getName());
+            log.info("사용자 이름 변경: {}", req.getName());
+        }
+
+        if (req.getPw() != null && !req.getPw().isBlank()) {
+            String encodedPw = passwordEncoder.encode(req.getPw());
+            user.setPw(encodedPw);
+            log.info("사용자 비밀번호 변경");
+        }
+
+        // 4) 저장
+        userRepository.save(user);
+
+        log.info("회원정보 수정 완료: userId={}", userId);
     }
 
     @Transactional

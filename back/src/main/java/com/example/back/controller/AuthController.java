@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -16,6 +17,7 @@ import com.example.back.DTO.DeleteRequest;
 import com.example.back.DTO.LoginRequest;
 import com.example.back.DTO.LoginResponse;
 import com.example.back.DTO.SignupRequest;
+import com.example.back.DTO.UpdateRequest;
 import com.example.back.service.AuthService;
 
 import io.jsonwebtoken.ExpiredJwtException;
@@ -137,7 +139,6 @@ public class AuthController {
         }
     }
 
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader) {
         /**
@@ -175,6 +176,63 @@ public class AuthController {
         }
     }
 
+    @PatchMapping("/update")
+    public ResponseEntity<?> updateUser(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody UpdateRequest req
+    ) {
+        /**
+         * 회원정보 수정 API
+         *
+         * 처리 흐름:
+         * 1) Authorization 헤더에서 Access Token 추출
+         * 2) 토큰에서 userId 추출 및 유효성 검증
+         * 3) name, pw 중 전달된 필드만 수정
+         * 4) DB 업데이트 후 성공 응답 반환
+         *
+         * Request Header:
+         *   Authorization: Bearer JWT_ACCESS_TOKEN
+         *
+         * Request Body JSON:
+         *   {
+         *     "name": "새 이름",
+         *     "pw": "새 비밀번호"
+         *   }
+         */
+
+        log.info("회원정보 수정 요청");
+
+           try {
+            // 1) Authorization 헤더 검증
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(401)
+                        .body(new ApiResponse<>("error", "유효하지 않은 인증 정보입니다.", null));
+            }
+
+            String token = authHeader.replace("Bearer ", "");
+
+            // 2) 서비스에 업데이트 요청
+            authService.updateUser(token, req);
+
+            log.info("회원정보 수정 완료");
+
+            return ResponseEntity.ok(
+                new ApiResponse<>("success", "회원정보가 성공적으로 수정되었습니다.", null)
+            );
+
+        } catch (RuntimeException e) {
+            log.warn("회원정보 수정 실패: {}", e.getMessage());
+            return ResponseEntity.status(400).body(
+                new ApiResponse<>("error", e.getMessage(), null)
+            );
+
+        } catch (Exception e) {
+            log.error("회원정보 수정 서버 오류: {}", e.toString());
+            return ResponseEntity.status(500).body(
+                new ApiResponse<>("error", "서버 내부 오류가 발생했습니다.", null)
+            );
+        }
+    }
 
     @PostMapping("/delete")
     public ResponseEntity<?> deleteUser(
