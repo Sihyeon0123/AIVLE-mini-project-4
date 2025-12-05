@@ -1,6 +1,11 @@
 package com.example.back.controller;
 
+import java.util.Map;
+
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -12,6 +17,7 @@ import com.example.back.DTO.DeleteRequest;
 import com.example.back.DTO.LoginRequest;
 import com.example.back.DTO.LoginResponse;
 import com.example.back.DTO.SignupRequest;
+import com.example.back.DTO.UpdateRequest;
 import com.example.back.service.AuthService;
 
 import io.jsonwebtoken.ExpiredJwtException;
@@ -92,18 +98,28 @@ public class AuthController {
          */
         log.info("로그인 요청: id={}", req.getId());
         try {
-            // Service에서 JWT Token만 반환받음
-            String token = authService.login(req);
-            log.info("로그인 성공: id={}", req.getId());
+            Map<String, String> tokens = authService.login(req);
+            String accessToken = tokens.get("accessToken");
+            String refreshToken = tokens.get("refreshToken");
 
-            // 응답 DTO는 Controller에서 조립
+            log.info("로그인 성공: id={}", req.getId());
+            ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(60 * 60 * 24 * 14) 
+                .build();
+
             LoginResponse response = new LoginResponse(
                 "success",
                 "로그인 성공",
                 req.getId()
             );
+
             return ResponseEntity.ok()
-                .header("Authorization", "Bearer " + token)
+                .header("Authorization", "Bearer " + accessToken)
+                .header("Set-Cookie", refreshCookie.toString())
                 .body(response);
         } catch (IllegalArgumentException e) {
             log.warn("로그인 실패 - 등록되지 않은 아이디: id={}, msg={}", req.getId(), e.getMessage());
@@ -122,7 +138,6 @@ public class AuthController {
             );
         }
     }
-
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader) {
@@ -161,6 +176,63 @@ public class AuthController {
         }
     }
 
+    @PatchMapping("/update")
+    public ResponseEntity<?> updateUser(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody UpdateRequest req
+    ) {
+        /**
+         * 회원정보 수정 API
+         *
+         * 처리 흐름:
+         * 1) Authorization 헤더에서 Access Token 추출
+         * 2) 토큰에서 userId 추출 및 유효성 검증
+         * 3) name, pw 중 전달된 필드만 수정
+         * 4) DB 업데이트 후 성공 응답 반환
+         *
+         * Request Header:
+         *   Authorization: Bearer JWT_ACCESS_TOKEN
+         *
+         * Request Body JSON:
+         *   {
+         *     "name": "새 이름",
+         *     "pw": "새 비밀번호"
+         *   }
+         */
+
+        log.info("회원정보 수정 요청");
+
+           try {
+            // 1) Authorization 헤더 검증
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(401)
+                        .body(new ApiResponse<>("error", "유효하지 않은 인증 정보입니다.", null));
+            }
+
+            String token = authHeader.replace("Bearer ", "");
+
+            // 2) 서비스에 업데이트 요청
+            authService.updateUser(token, req);
+
+            log.info("회원정보 수정 완료");
+
+            return ResponseEntity.ok(
+                new ApiResponse<>("success", "회원정보가 성공적으로 수정되었습니다.", null)
+            );
+
+        } catch (RuntimeException e) {
+            log.warn("회원정보 수정 실패: {}", e.getMessage());
+            return ResponseEntity.status(400).body(
+                new ApiResponse<>("error", e.getMessage(), null)
+            );
+
+        } catch (Exception e) {
+            log.error("회원정보 수정 서버 오류: {}", e.toString());
+            return ResponseEntity.status(500).body(
+                new ApiResponse<>("error", "서버 내부 오류가 발생했습니다.", null)
+            );
+        }
+    }
 
     @PostMapping("/delete")
     public ResponseEntity<?> deleteUser(
@@ -252,4 +324,47 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/token/refresh")
+    public ResponseEntity<?> refreshToken(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+        /**
+         * 액세스 토큰 재발급 API
+         * - 쿠키로 전달된 Refresh Token을 이용하여
+         *   새로운 Access Token을 발급합니다.
+         *
+         * 처리 흐름:
+         *   1) refreshToken 쿠키 존재 여부 확인
+         *   2) 유효성 검사
+         *   3) 서버에 저장된 refreshToken과 일치 여부 확인
+         *   4) 새 AccessToken 생성 후 Authorization 헤더로 응답
+         */
+
+        log.info("액세스 토큰 재발급 요청: refreshToken={}", refreshToken);
+
+        if (refreshToken == null) {
+            log.warn("토큰 재발급 실패 - 쿠키에 refreshToken 없음");
+            return ResponseEntity.status(401).body(
+                new ApiResponse<>("error", "Refresh Token이 전송되지 않았습니다.", null)
+            );
+        }
+
+        try {
+            String newAccessToken = authService.reissueAccessToken(refreshToken);
+            log.info("액세스 토큰 재발급 완료");
+
+            return ResponseEntity.ok()
+                .header("Authorization", "Bearer " + newAccessToken)
+                .body(new ApiResponse<>("success", "액세스 토큰 재발급 성공", null));
+
+        } catch (RuntimeException e) {
+            log.warn("토큰 재발급 실패 - refreshToken={}, msg={}", refreshToken, e.getMessage());
+            return ResponseEntity.status(401).body(
+                new ApiResponse<>("error", e.getMessage(), null)
+            );
+        } catch (Exception e) {
+            log.error("토큰 재발급 서버 오류: refreshToken={}, error={}", refreshToken, e.toString());
+            return ResponseEntity.status(500).body(
+                new ApiResponse<>("error", "서버 내부 오류가 발생했습니다.", null)
+            );
+        }
+    }
 }   

@@ -9,6 +9,4 @@ public class LoginResponse {
     private String status;   // success or error
     private String message;  
     private String userId;   
-    private String token;
-
 }
