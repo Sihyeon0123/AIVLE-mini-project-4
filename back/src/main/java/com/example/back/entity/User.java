@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 public class User {
     @Id
-    @Column(nullable = false, length = 100)      // VARCHAR(100)
+    @Column(nullable = false, length = 100)      
     private String id;                            // PK
 
     @Column(nullable = false, length = 255)

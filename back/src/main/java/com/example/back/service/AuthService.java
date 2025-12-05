@@ -3,13 +3,20 @@ package com.example.back.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.dao.DataAccessException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.back.DTO.LoginRequest;
 import com.example.back.DTO.SignupRequest;
+import com.example.back.entity.RefreshToken;
 import com.example.back.entity.User;
 import com.example.back.jwt.JwtUtil;
+import com.example.back.repository.RefreshTokenRepository;
 import com.example.back.repository.UserRepository;
 
 @Service
@@ -18,11 +25,11 @@ import com.example.back.repository.UserRepository;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
 
     public void signup(SignupRequest req) {
-
         /**
          * 회원가입 서비스 로직
          * - 중복 ID 여부 확인
@@ -33,7 +40,6 @@ public class AuthService {
          *   - req.getPw(): 비밀번호
          *   - req.getName(): 이름
          */
-
         log.info("회원가입 처리 시작: id={}", req.getId());
 
         if (userRepository.existsById(req.getId())) {
@@ -52,21 +58,32 @@ public class AuthService {
     }
 
     @SuppressWarnings("null")
-    public String login(LoginRequest req) {
-
+    public Map<String, String> login(LoginRequest req) {
         /**
          * 로그인 서비스 로직
-         * - ID로 유저 조회
-         * - 비밀번호 검증
-         * - JWT 토큰 생성 후 반환 
+         *
+         * - 사용자 ID로 User 엔티티 조회
+         * - 비밀번호 검증 (BCrypt 해시 비교)
+         * - Access Token 및 Refresh Token 생성
+         * - Refresh Token을 DB에 저장
+         * - 생성된 토큰(access/refresh)을 Map 형태로 반환
+         *
+         * 처리 흐름:
+         *   1) 사용자 존재 여부 검사
+         *   2) 비밀번호 일치 여부 확인
+         *   3) Access Token 생성
+         *   4) Refresh Token 생성 및 만료시간 설정
+         *   5) Refresh Token DB 저장 (insert or update)
+         *   6) 최종적으로 두 토큰을 반환(Map)
          *
          * @param req LoginRequest
-         *   - req.getId(): 로그인 ID
-         *   - req.getPw(): 입력한 비밀번호
+         *      - req.getId(): 로그인 ID
+         *      - req.getPw(): 입력한 비밀번호
          *
-         * @return String (JWT Access Token)
+         * @return Map<String, String>
+         *      - accessToken: JWT Access Token
+         *      - refreshToken: JWT Refresh Token
          */
-
         log.info("로그인 처리 시작: id={}", req.getId());
 
         User user = userRepository.findById(req.getId())
@@ -78,19 +95,49 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPw(), user.getPw())) {
             log.warn("로그인 실패 - 비밀번호 불일치: id={}", req.getId());
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+        }   
+
+        String accessToken = jwtUtil.createAccessToken(user.getId());
+        String refreshToken = jwtUtil.createRefreshToken(user.getId());
+        Long expiry = System.currentTimeMillis() + (14L * 24 * 60 * 60 * 1000); // 14일 후 만료 시간
+
+        try {
+            // Refresh Token 조회 (user 기준)
+            RefreshToken savedToken = refreshTokenRepository.findByUserId(user.getId()).orElse(null);
+            if (savedToken == null) {
+                // 저장된 refresh token 없음 → 새로 생성
+                savedToken = new RefreshToken(user, refreshToken, expiry);
+                log.info("Refresh Token 신규 생성: userId={}", user.getId());
+            } else {
+                // 기존 refresh token 존재 → 업데이트
+                savedToken.updateToken(refreshToken, expiry);
+                log.info("기존 Refresh Token 업데이트: userId={}", user.getId());
+            }
+
+            refreshTokenRepository.save(savedToken);
+            log.info("Refresh Token 저장 완료: userId={}", user.getId());
+
+        } catch (DataAccessException e) {
+            // DB 접근 오류
+            log.error("Refresh Token 저장 실패 - DB 오류: userId={}, error={}", user.getId(), e.getMessage());
+            throw new RuntimeException("서버 DB 처리 중 오류가 발생했습니다.");
+
+        } catch (Exception e) {
+            // 기타 모든 예외
+            log.error("Refresh Token 저장 실패 - 알 수 없는 오류: userId={}, error={}", user.getId(), e.toString());
+            throw new RuntimeException("리프레시 토큰 저장 중 오류가 발생했습니다.");
         }
 
-        String token = jwtUtil.createToken(user.getId());
+        Map<String, String> tokens = new HashMap<>();
+        tokens.put("accessToken", accessToken);
+        tokens.put("refreshToken", refreshToken);
 
         log.info("로그인 성공 - 토큰 발급: id={}", req.getId());
 
-        return token;
+        return tokens;
     }
 
-
-
     public void logout(String token) {
-
         /**
          * 로그아웃 서비스 로직
          * - JWT 토큰 검증만 수행
@@ -98,7 +145,6 @@ public class AuthService {
          *
          * @param token 클라이언트 JWT Access Token
          */
-
         log.info("로그아웃 처리 시작: token={}", token);
 
         try {
@@ -111,20 +157,20 @@ public class AuthService {
         }
     }
 
+    @Transactional
     @SuppressWarnings("null")
     public void deleteUser(String token, String pw) {
-
         /**
          * 회원 탈퇴 서비스 로직
          * - token → userId 추출
          * - userId로 사용자 조회
          * - 비밀번호 검증
+         * - Refresh Token 삭제
          * - DB에서 사용자 삭제
          *
          * @param token JWT Access Token
          * @param pw    비밀번호 (본인 확인용)
          */
-
         log.info("회원 탈퇴 처리 시작: token={}", token);
 
         String userId;
@@ -150,10 +196,23 @@ public class AuthService {
             throw new RuntimeException("사용자 정보를 찾을 수 없습니다.");
         }
 
-        // 4) 삭제
-        userRepository.delete(user);
+        // 4) Refresh Token 삭제 (외래키 문제 예방)
+        try {
+            refreshTokenRepository.deleteByUserId(userId);
+            log.info("Refresh Token 삭제 완료: userId={}", userId);
+        } catch (Exception e) {
+            log.error("회원 탈퇴 실패 - Refresh Token 삭제 중 오류: userId={}, error={}", userId, e.toString());
+            throw new RuntimeException("회원 탈퇴 처리 중 오류가 발생했습니다.");
+        }
 
-        log.info("회원 탈퇴 처리 완료: userId={}", userId);
+        // 5) 사용자 삭제
+        try {
+            userRepository.delete(user);
+            log.info("회원 탈퇴 처리 완료: userId={}", userId);
+        } catch (Exception e) {
+            log.error("회원 탈퇴 실패 - User 삭제 중 오류: userId={}, error={}", userId, e.toString());
+            throw new RuntimeException("회원 탈퇴 처리 중 오류가 발생했습니다.");
+        }
     }
 
     public String validateAccessToken(String token) {
@@ -166,5 +225,47 @@ public class AuthService {
         return jwtUtil.validateToken(token); // 예외는 그대로 Controller로 전파
     }
 
+    public String reissueAccessToken(String refreshToken) {
+        /**
+         *  토큰 유효성 검사
+         * - 정상: JWT 토큰 반환
+         * - 그 외:Exception
+         * 
+         * @param refreshToken 클라이언트가 보낸 JWT Refresh Token
+         * @return 새롭게 발급된 Access Token (String)
+         */
+
+        log.info("토큰 재발급 요청: refreshToken={}", refreshToken);
+
+        // Refresh Token 유효성 검사
+        jwtUtil.validateRefreshToken(refreshToken);
+        String userId = jwtUtil.getUserId(refreshToken);
+        
+        if (userId == null || userId.trim().isEmpty()) {
+            log.warn("Refresh Token에서 userId 추출 실패: refreshToken={}", refreshToken);
+            throw new RuntimeException("사용자 정보를 확인할 수 없습니다. 다시 로그인해주세요.");
+        }
+        
+        // DB에 저장된 Refresh Token 조회
+        RefreshToken savedToken = refreshTokenRepository.findByUserId(userId).orElse(null);
+        log.info("123");
+        if (savedToken == null) {
+            log.warn("리프레시 토큰 없음: userId={}", userId);
+            throw new RuntimeException("저장된 리프레시 토큰이 없습니다. 다시 로그인해야 합니다.");
+        }
+        if (!savedToken.getToken().equals(refreshToken)) {
+            log.warn("리프레시 토큰 불일치: userId={}", userId);
+            throw new RuntimeException("저장된 리프레시 토큰과 일치하지 않습니다.");
+        }
+        if (System.currentTimeMillis() > savedToken.getExpiry()) {
+            log.warn("리프레시 토큰 만료됨: userId={}", userId);
+            throw new RuntimeException("리프레시 토큰이 만료되었습니다. 다시 로그인해야 합니다.");
+        }
+
+        String newAccessToken = jwtUtil.createAccessToken(userId);
+        log.info("새 Access Token 발급 완료: userId={}", userId);
+
+        return newAccessToken;
+    }
 
 }
