@@ -1,6 +1,5 @@
 package com.example.back.service;
 
-import com.example.back.DTO.ApiResponse;
 import com.example.back.DTO.BookListResponse;
 import com.example.back.entity.Book;
 import com.example.back.repository.BookRepository;
@@ -10,7 +9,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor

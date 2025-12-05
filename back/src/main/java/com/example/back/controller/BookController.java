@@ -1,16 +1,11 @@
 package com.example.back.controller;
 
 import java.io.File;
-import java.util.List;
 
 import com.example.back.DTO.ApiResponse;
 import com.example.back.DTO.BookListResponse;
-import com.example.back.entity.Book;
 import com.example.back.service.BookService;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
