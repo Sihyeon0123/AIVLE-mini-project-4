@@ -32,6 +32,19 @@ public class BookService {
         /**
          * 도서 목록 조회 서비스 로직
          *
+         * - 전달받은 page, size 값을 기반으로 Pageable 객체를 생성하여 페이징 처리된 도서 목록을 조회한다.
+         * - JPA의 findAll(Pageable)을 사용하여 전체 도서 목록을 페이지 단위로 조회한다.
+         * - 조회된 Page<Book> 객체를 BookListResponse DTO 형태로 변환하여 반환한다.
+         *
+         * @param page int
+         *     - 조회할 페이지 번호 (0부터 시작)
+         * @param size int
+         *     - 한 페이지에 조회할 도서 개수
+         *
+         * @return BookListResponse
+         *     - 현재 페이지 번호 (page)
+         *     - 전체 페이지 수 (totalPages)
+         *     - 도서 목록 리스트 (books)
          */
         Pageable pageable = PageRequest.of(page, size);
         Page<Book> result = bookRepository.findAll(pageable);
@@ -45,7 +58,26 @@ public class BookService {
 
     // TODO: 신규 도서 등록 (POST)
     public BookCreateResponse createBook(String userId, BookCreateRequest req) {
-
+        /**
+         * 도서 등록 서비스 로직
+         *
+         * <동작 개요>
+         * - JWT 인증을 통해 전달된 userId와 클라이언트가 보낸 도서 정보를 바탕으로
+         *   새로운 Book 엔티티를 생성하고 DB에 저장한 뒤, 생성된 도서의 PK(bookId)만 반환한다.
+         *
+         * @param userId JwtAuthFilter에서 추출된 인증 사용자 ID (users.id)
+         * @param req    도서 등록 요청 본문 데이터 (title, description, content, categoryId)
+         *
+         * @return BookCreateResponse
+         *     - 생성된 도서의 PK 값(bookId)을 담은 응답 DTO
+         *
+         * @throws IllegalArgumentException
+         *     - 제목/설명/내용 등 필수 값이 비어 있거나 잘못된 경우
+         *
+         * @throws RuntimeException
+         *     - userId에 해당하는 사용자 정보를 찾지 못한 경우
+         *     - categoryId에 해당하는 카테고리 정보를 찾지 못한 경우
+         */
         log.info("도서 등록 서비스 시작: userId={}, title={}", userId, req.getTitle());
 
         // 1) 필수 값 검증

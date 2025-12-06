@@ -15,14 +15,15 @@ import java.time.LocalDateTime;
 public class Book {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // PK
+    @Column(name="book_id")
+    private Long id; // PK (book id)
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user; // 작성자 id
 
      @ManyToOne
-     @JoinColumn(name = "category", nullable = false)
+     @JoinColumn(name = "category_id", nullable = false)
      private Category category; // 카테고리
 
     @Column(nullable = false, length = 100)
@@ -35,8 +36,10 @@ public class Book {
     private String content; // 작품 내용
 
     @CreationTimestamp
+    @Column(name = "created_at")
     private LocalDateTime created_at;
 
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updated_at;
 }

@@ -37,6 +37,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         try {
             jwtUtil.validateToken(token); // 토큰 유효성 검사
+
+            String userId = jwtUtil.getUserId(token);
+            log.info("[JwtAuthFilter] 추출된 userId={}", userId);
+
+            request.setAttribute("userId", userId);
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json; charset=UTF-8");

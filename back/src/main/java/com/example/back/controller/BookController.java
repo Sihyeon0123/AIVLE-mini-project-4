@@ -6,6 +6,7 @@ import com.example.back.DTO.ApiResponse;
 import com.example.back.DTO.BookCreateRequest;
 import com.example.back.DTO.BookCreateResponse;
 import com.example.back.DTO.BookListResponse;
+import com.example.back.jwt.JwtUtil;
 import com.example.back.service.BookService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.FileSystemResource;
@@ -25,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class BookController {
     private final BookService bookService;
     private final String coverPath = "./uploads/bookcovers/";
+    private final JwtUtil jwtUtil;
 
     @GetMapping("/cover/{bookId}")
     @SuppressWarnings("null")
@@ -77,9 +79,16 @@ public class BookController {
     ) {
         /**
          * 도서 목록 조회 API
-         * {page}를 기준으로 도서 목록 조회.
-         * page: default 1
-         * size: defalt = 10
+         * - {page}를 기준으로 도서 목록을 조회합니다.
+         *
+         * @param page Long
+         *     - page: default 1
+         *     - size: defalt = 10 (값 고정.)
+         *
+         * @return ResponseEntity<ApiResponse<?>>
+         *     - 200: 도서 목록 반환
+         *     - 400: 잘못된 요청
+         *     - 500: 서버 오류
          */
         log.info("도서 목록 조회 요청: page={}, size={}", page, size);
 
@@ -116,12 +125,28 @@ public class BookController {
     // TODO: 신규 도서 등록 (POST)
     @PostMapping
     public ResponseEntity<ApiResponse<?>> createBook(
-            HttpServletRequest request,
+            @RequestAttribute("userId") String userId,
             @RequestBody BookCreateRequest req
     ) {
-        String userId = (String) request.getAttribute("userId");
-        // String userId = "test"; // TODO: Test 용 userId 이므로 확인 후 삭제 부탁드립니다.
-
+        /**
+         * 도서 등록 API
+         *
+         * <동작 개요>
+         * - JWT 필터에서 검증된 userId(@RequestAttribute)와 요청 본문(BookCreateRequest)을 전달받아
+         *   도서 등록 서비스(createBook)를 호출하고, 결과를 공통 응답 포맷(ApiResponse)으로 감싸서 반환한다.
+         *
+         * 요청 정보
+         * - @RequestAttribute("userId") String userId
+         *   : JwtAuthFilter에서 토큰을 검증한 뒤 request.setAttribute("userId", ...)로 설정한 인증 사용자 ID
+         * - @RequestBody BookCreateRequest req
+         *   : 클라이언트가 전송한 도서 등록 데이터 (title, description, content, categoryId)
+         *
+         * 응답 형식 (ResponseEntity<ApiResponse<?>>)
+         * - 201: 등록 성공
+         * - 400 필수 값 누락, 유효하지 않은 내용 등으로 IllegalArgumentException 발생 시 (잘못된 요청 데이터)
+         * - 401 사용자 미존재, 카테고리 미존재 등 RuntimeException 발생 시 (인증/조회 관련 문제)
+         * - 500: 위에서 처리하지 못한 예외가 발생한 경우 (서버 내부 오류)
+         */
         log.info("도서 등록 요청: userId={}, title={}", userId, req.getTitle());
 
         try {

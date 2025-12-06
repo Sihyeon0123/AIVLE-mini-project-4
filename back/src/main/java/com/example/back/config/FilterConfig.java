@@ -26,7 +26,9 @@ public class FilterConfig {
         String[] protectedUrls = {
             "/api/auth/logout",
             "/api/auth/update",
-            "/api/auth/delete"
+            "/api/auth/delete",
+            "/api/books",
+            "/api/books/*"
         };
 
         registrationBean.addUrlPatterns(protectedUrls);
