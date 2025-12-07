@@ -52,6 +52,7 @@ public class BookService {
     // TODO: 도서 상세 정보 조회 (GET)
 
 
+    @SuppressWarnings("null")
     public BookCreateResponse createBook(String userId, BookCreateRequest req) {
         /**
          * 도서 등록 서비스 로직 (POST)
@@ -113,6 +114,7 @@ public class BookService {
         return new BookCreateResponse(saved.getId());
     }
 
+    @SuppressWarnings("null")
     public BookUpdateResponse updateBook(String userId, Long bookId, BookUpdateRequest req) {
         /**
          * 도서 수정 서비스 로직
