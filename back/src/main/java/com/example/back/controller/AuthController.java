@@ -2,6 +2,7 @@ package com.example.back.controller;
 
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -30,8 +31,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
-     private final AuthService authService; 
-
+    private final AuthService authService; 
+    
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpirationMs;
      
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<?>> signup(@RequestBody SignupRequest req) {
@@ -102,13 +105,15 @@ public class AuthController {
             String accessToken = tokens.get("accessToken");
             String refreshToken = tokens.get("refreshToken");
 
+            long refreshExpirationSeconds = refreshExpirationMs / 1000;
+
             log.info("로그인 성공: id={}", req.getId());
             ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(false)
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .path("/")
-                .maxAge(60 * 60 * 24 * 14) 
+                .maxAge(refreshExpirationSeconds) 
                 .build();
 
             LoginResponse response = new LoginResponse(

@@ -1,8 +1,17 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Navbar, Container, Nav, NavDropdown, Row, Col, Form, Button } from "react-bootstrap";
 
 export default function MainNavbar() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // 브라우저 환경에서만 실행됨 → localStorage 안전하게 접근 가능
+    const token = localStorage.getItem("accessToken");
+    setIsLoggedIn(!!token);
+  }, []);
+
   return (
     <Navbar className="navbar navbar-expand-lg navbar-light bg-light">
       <Container>
@@ -34,11 +43,18 @@ export default function MainNavbar() {
 
         {/* 오른쪽 Dropdown */}
         <NavDropdown title="내 계정" id="basic-nav-dropdown">
-          <NavDropdown.Item href="/profile">내 정보</NavDropdown.Item>
-          <NavDropdown.Item href="/login">로그인</NavDropdown.Item>
-          <NavDropdown.Item href="/logout">로그아웃</NavDropdown.Item>
-          <NavDropdown.Divider />
-          <NavDropdown.Item href="/signup">회원가입</NavDropdown.Item>
+          {isLoggedIn && (
+            <>
+              <NavDropdown.Item href="/profile">내 정보</NavDropdown.Item>
+              <NavDropdown.Item href="/logout">로그아웃</NavDropdown.Item>
+            </>
+          )}
+          {!isLoggedIn && (
+            <>
+              <NavDropdown.Item href="/login">로그인</NavDropdown.Item>
+              <NavDropdown.Item href="/signup">회원가입</NavDropdown.Item>
+            </>
+          )}
         </NavDropdown>
 
       </Container>
