@@ -1,8 +1,11 @@
 package com.example.back.controller;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.back.DTO.ApiResponse;
 import com.example.back.DTO.DeleteRequest;
@@ -20,6 +24,7 @@ import com.example.back.DTO.LoginRequest;
 import com.example.back.DTO.LoginResponse;
 import com.example.back.DTO.SignupRequest;
 import com.example.back.DTO.UpdateRequest;
+import com.example.back.entity.User;
 import com.example.back.service.AuthService;
 
 import jakarta.servlet.http.Cookie;
@@ -317,4 +322,60 @@ public class AuthController {
                 new ApiResponse<>("success", "API Key 조회 성공", apiKey)
         );
     }
+
+    @GetMapping("/user-info")
+    public ResponseEntity<?> getUserInfo(
+            @RequestHeader("Authorization") String authHeader
+    ) {
+        /**
+         * 사용자 정보 조회 API
+         * - Authorization 헤더에서 JWT 토큰을 추출하여 사용자 인증
+         * - 토큰에서 userId를 얻고 해당 사용자의 정보를 조회하여 반환
+         *
+         * @param authHeader Authorization 헤더 값
+         *   - 예: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+         *
+         * @return ResponseEntity<?>
+         *   - 200: 사용자 정보 조회 성공
+         *   - 401: 토큰이 유효하지 않음 (만료, 변조 등)
+         *   - 404: 해당 사용자 정보 없음
+         *   - 500: 서버 내부 오류
+         */
+        log.info("사용자 정보 조회 요청: AuthorizationHeader={}", authHeader);
+
+        // Authorization 헤더 검증
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.warn("사용자 정보 조회 실패 - Authorization 헤더가 유효하지 않음: {}", authHeader);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+        }
+
+        // "Bearer " 제거 후 토큰만 추출
+        String token = authHeader.substring(7);
+        log.info("토큰 추출 완료: {}", token);
+
+        // 서비스 호출: 토큰 기반 사용자 정보 조회
+        User user = authService.getUserInfo(token);
+        log.info("사용자 정보 조회 성공: id={}, name={}", user.getId(), user.getName());
+
+        // 응답 헤더에 API Key 추가 
+        HttpHeaders headers = new HttpHeaders();
+        if (user.getApiKey() != null) {
+            headers.add("API-KEY", user.getApiKey());
+            log.info("API Key 헤더에 추가 완료: apiKey={}", user.getApiKey());
+        } else {
+            log.info("API Key 없음: id={}", user.getId());
+        }
+
+        // 응답 Body 구성
+        Map<String, Object> body = new HashMap<>();
+        body.put("status", "success");
+        body.put("message", "사용자 정보 조회 성공");
+        body.put("id", user.getId());
+        body.put("name", user.getName());
+
+        log.info("사용자 정보 조회 API 응답 반환 완료: id={}", user.getId());
+
+        return new ResponseEntity<>(body, headers, HttpStatus.OK);
+    }
 }   
+

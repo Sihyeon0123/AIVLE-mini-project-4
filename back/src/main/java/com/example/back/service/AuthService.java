@@ -415,4 +415,55 @@ public class AuthService {
 
         return user.getApiKey();
     }
+
+    public User getUserInfo(String accessToken) {
+        /**
+         * 사용자 정보 조회 서비스
+         * - 전달된 JWT Access Token에서 사용자 ID를 추출하고,
+         *   해당 사용자의 전체 정보를 조회하여 반환합니다.
+         *
+         * 처리 흐름:
+         *   1) JWT에서 userId 추출
+         *   2) userId가 유효하지 않을 경우 예외 발생
+         *   3) DB에서 사용자 정보 조회
+         *   4) 존재하지 않을 경우 예외 발생
+         *   5) User 엔티티 반환
+         *
+         * 예외 처리:
+         *   - 잘못된 토큰: ResponseStatusException(401) 발생
+         *   - 사용자 없음: ResponseStatusException(404) 발생
+         */
+
+        log.info("사용자 정보 조회 처리 시작");
+
+        // 1) JWT에서 userId 추출
+        String userId;
+        try {
+            userId = jwtUtil.getUserId(accessToken);
+            log.info("JWT 토큰 검증 완료: userId={}", userId);
+        } catch (Exception e) {
+            log.warn("사용자 정보 조회 실패 - 유효하지 않은 토큰");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+        }
+
+        // 2) userId가 비정상적인 경우
+        if (userId == null || userId.isBlank()) {
+            log.warn("사용자 정보 조회 실패 - JWT에서 추출된 userId가 유효하지 않음");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+        }
+
+        // 3) DB에서 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> {
+                    log.warn("사용자 정보 조회 실패 - 사용자 정보 없음: userId={}", userId);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 사용자 정보를 찾을 수 없습니다.");
+                });
+
+        // 4) 조회 성공 로그
+        log.info("사용자 정보 조회 성공: id={}, name={}", user.getId(), user.getName());
+
+        // 5) User 엔티티 반환
+        return user;
+    }
+
 }

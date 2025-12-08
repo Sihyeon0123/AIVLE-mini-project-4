@@ -41,11 +41,12 @@ public class SecurityConfig {
                     "/api/auth/logout",
                     "/api/auth/update",
                     "/api/auth/delete",
-                    "api/books/detail",
+                    "/api/books/detail",
                     "/api/books/create",
                     "/api/books/update",
                     "/api/books/delete",
-                    "/api/auth/apikey"
+                    "/api/auth/apikey",
+                    "/api/auth/user-info"
                 ).authenticated()
                 .anyRequest().permitAll()
             )
@@ -63,7 +64,7 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("*"));
         config.setAllowedHeaders(List.of("*"));
 
-        config.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
+        config.setExposedHeaders(List.of("Authorization", "Set-Cookie", "API-KEY"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
