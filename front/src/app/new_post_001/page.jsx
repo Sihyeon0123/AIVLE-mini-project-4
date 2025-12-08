@@ -13,49 +13,39 @@ function Page() {
     const [img , setPreviewImageUrl] = useState("");
 
     const handleSubmit = async () => {
+        // ⭐ [수정 1] 유효성 검사를 먼저 수행
+        if (!title || !description || !content || !category) {
+            alert("제목, 설명, 내용, 카테고리를 모두 입력해 주세요.");
+            return;
+        }
+
         const postData = {
             title,
             description,
             content,
             category,
         };
-        console.log(postData);
+        console.log("이미지 생성을 위해 데이터 임시 저장:", postData);
 
-        try {
-            const response = await fetch('http://localhost:8080/api/books/cover/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(postData),
-            });
+        // 데이터를 localStorage에 저장합니다.
+        localStorage.setItem("temp_post_data", JSON.stringify(postData));
 
-            if (!title || !description || !content || !category) {
-                alert("제목, 설명, 내용, 카테고리를 모두 입력해 주세요.");
-                return;
-            }
-
-            if (response.ok) {
-                const result = await response.json();
-                alert("데이터가 저장되었습니다.");
-
-                window.open("/new_post_002", "_blank");
-
-            } else {
-                console.error("데이터 전송 실패:", response.status, response.statusText);
-                alert(`데이터 전송에 실패했습니다. (HTTP Error: ${response.status})`);
-            }
-        } catch (error) {
-            console.error("네트워크 오류:", error);
-            alert("서버 연결에 실패했습니다.");
-        }
+        // 새 창 열기
+        window.open("/new_post_002", "_blank");
     }
 
     // ======================= 게시물 게시 ========================
 
     const finalCheck = async () => {
         if (!title || !description || !content || !category || !img) {
-            alert("제목, 설명, 내용, 카테고리, 이미지 중 비어있는 곳이 존재합니다..");
+            alert("제목, 설명, 내용, 카테고리, 이미지 중 비어있는 곳이 존재합니다.");
+            return;
+        }
+
+        // JWT 토큰을 localStorage에서 가져옵니다. (키가 'jwt'라고 가정)
+        const jwt = localStorage.getItem("accessToken");
+        if (!jwt) {
+            alert("로그인이 필요합니다.");
             return;
         }
 
@@ -72,13 +62,18 @@ function Page() {
         try {
             const response = await fetch('http://localhost:8080/api/books/create', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwt}`,
+                },
                 body: JSON.stringify(finalPostData),
             });
 
             if (response.ok) {
                 alert("게시물이 성공적으로 등록되었습니다!");
                 window.location.href = "/";
+                // 최종 성공 시 임시 데이터 삭제
+                localStorage.removeItem("temp_post_data");
             } else {
                 console.error("게시물 등록 실패:", response.status, response.statusText);
                 alert(`게시물 등록 실패: ${response.statusText}`);
@@ -217,7 +212,7 @@ function Page() {
                 <div style = {previewImageStyle}>
                     <div style={imageAreaStyle}>
                         {img ? (
-                            <img src={img} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <img src={img} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                         ) : (
                             ""
                         )}

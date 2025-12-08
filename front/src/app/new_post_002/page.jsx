@@ -12,31 +12,45 @@ function Page() {
         category: "",
     });
 
-    // ========================== JWT로 개인 API Key 가져오기 ==========================
+    // ========================== JWT로 개인 API Key 가져오기  ==========================
     const getUserApiKey = async () => {
-        const jwt = localStorage.getItem("jwt");
+        const accessToken = localStorage.getItem("accessToken");
 
-        if (!jwt) {
+        if (!accessToken) {
             alert("로그인이 필요합니다.");
             return null;
         }
 
         try {
-            const res = await fetch("http://localhost:8080/api/auth/signup", {
+            const url = "http://localhost:8080/api/auth/user-info";
+
+            const res = await fetch(url, {
                 method: "GET",
                 headers: {
-                    "Authorization": `Bearer ${jwt}`,
+                    "Authorization": `Bearer ${accessToken}`,
                 },
             });
 
-            if (!res.ok) throw new Error("API Key 조회 실패");
+            if (!res.ok) {
+                // 서버가 4xx 또는 5xx 오류를 반환했을 때의 처리
+                const errorData = await res.json();
+                throw new Error(`API Key 조회 실패: ${errorData.message || res.statusText}`);
+            }
 
-            const data = await res.json();
-            return data.apiKey;
+            //  API Key 추출 로직
+            const userApiKey = res.headers.get("API-KEY");
+
+            if (userApiKey) {
+                return userApiKey;
+            } else {
+                // Body가 아니라 헤더에 API Key가 없는 경우
+                throw new Error("서버 응답 헤더에서 'API-KEY' 필드를 찾을 수 없습니다. (API Key가 등록되지 않았을 수 있습니다.)");
+            }
 
         } catch (err) {
-            console.error(err);
-            alert("API Key를 가져오지 못했습니다.");
+            console.error("API Key 조회 중 에러:", err);
+            // 최종 사용자에게 표시될 알림
+            alert(`API Key를 가져오지 못했습니다. 오류: ${err.message}`);
             return null;
         }
     };
@@ -49,16 +63,20 @@ function Page() {
         }
 
         const apiKey = await getUserApiKey();
-        if (!apiKey) return;
+        if (!apiKey) return; // API Key를 가져오지 못했으면 중단
 
-
-        const prompt = `제목: ${data.title}, 설명: ${data.description}, 내용을 기반으로 예술적인 책 표지 이미지를 생성`;
+        // DALL·E 프롬프트 구성
+        const prompt = `제목: ${data.title}, 설명: ${data.description},  앞의 내용을 기반으로 예술적인 책 표지 이미지를 생성. 표지 이미지는 ${data.category}에 맞게.`;
 
         try {
+            setImageUrl("");
+            alert("AI 이미지 생성 중입니다. 잠시 기다려주세요...");
+
             const res = await fetch("https://api.openai.com/v1/images/generations", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    // 사용자 API Key 사용
                     "Authorization": `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
@@ -73,46 +91,68 @@ function Page() {
             const url = result.data?.[0]?.url;
 
             if (!url) {
-                // 오류 출력
                 console.error("OpenAI Error:", result.error);
                 alert(`이미지 URL을 받지 못했습니다. OpenAI 오류: ${result.error?.message || '알 수 없는 오류'}`);
                 return;
             }
 
             setImageUrl(url);
+            alert("이미지 생성이 완료되었습니다.");
 
         } catch (err) {
             console.error("네트워크 또는 DALL·E API 오류:", err);
-            alert("이미지 생성 중 오류 발생");
+            alert("이미지 생성 중 오류 발생. API Key가 유효한지 확인하세요.");
         }
-        }
+    }
 
     // ========================== 이미지 자동 생성 ==========================
     useEffect(() => {
-        const fetchPost = async () => {
-            const res = await fetch("http://localhost:8080/api/books/cover/generate", {
-                method: "GET",
-            });
+        const fetchPostAndGenerate = async () => {
+            // localStorage에서 데이터 로드
+            const tempPostData = localStorage.getItem("temp_post_data");
 
-            const data = await res.json();
-            setPostData(data);
+            if (tempPostData) {
+                const data = JSON.parse(tempPostData);
+                setPostData(data); // State 업데이트
 
-            // 첫 이미지 자동 생성
-            imageGenerate(data);
+                console.log("임시 데이터 로드 완료. 이미지 생성 시작:", data.title);
+
+                // 데이터가 있다면 즉시 이미지 생성 함수 호출
+                imageGenerate(data);
+            } else {
+                console.error("게시물 정보를 가져오지 못했습니다.");
+                alert("게시물 정보를 찾을 수 없습니다. 작성 페이지로 돌아가 다시 시도해 주세요.");
+                // window.close();
+            }
         };
 
-        fetchPost();
+        fetchPostAndGenerate();
+
+        // 부모 창 메시지 수신 로직
+        const handleMessage = (event) => {
+            if (event.data && event.data.imageUrl) {
+                setImageUrl(event.data.imageUrl);
+            }
+        };
+        window.addEventListener("message", handleMessage);
+        return () => window.removeEventListener("message", handleMessage);
     }, []);
+
 
     // ==================== 결정 버튼 ===============
 
     const handleDecision = () => {
         if (imageUrl && window.opener) {
+            // 부모 창(Page.js)에 이미지 URL 전달
             window.opener.postMessage({imageUrl: imageUrl}, "*");
 
             window.close(); // 메시지 전송 후 창을 닫습니다.
+        } else {
+            alert("생성된 이미지가 없습니다.");
         }
     }
+
+    // ==================== Style 및 UI 코드 ====================
 
     const containerStyle = {
         maxWidth: '75%',
@@ -127,6 +167,10 @@ function Page() {
     // 미리보기 이미지 나오는 곳
     const previewImageStyle = {
         border : '1px solid black',
+        minHeight: '400px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
     };
 
     // 버튼 나누기
@@ -148,20 +192,26 @@ function Page() {
 
     // ========================== UI ==========================
     return (
-            <div style={containerStyle}>
-                <div style={previewImageStyle}>
-                    {imageUrl && <img src={imageUrl} style={{ width: "100%" }} />}
-                </div>
-
-                <div style={buttonContainerStyle}>
-                    <button style={buttonStyle} onClick={imageGenerate}>
-                        재생성
-                    </button>
-                    <button style={buttonStyle} onClick={handleDecision}>
-                        결정
-                    </button>
-                </div>
+        <div style={containerStyle}>
+            <div style={previewImageStyle}>
+                {imageUrl ? (
+                    <img src={imageUrl} style={{ width: "100%", height: "auto" }} alt="AI Generated Cover" />
+                ) : (
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'black' }}>
+                        이미지 생성 중... (잠시만 기다려주세요)
+                    </div>
+                )}
             </div>
+
+            <div style={buttonContainerStyle}>
+                <button style={buttonStyle} onClick={() => imageGenerate()}>
+                    재생성
+                </button>
+                <button style={buttonStyle} onClick={handleDecision} disabled={!imageUrl}>
+                    결정
+                </button>
+            </div>
+        </div>
     );
 
 }
