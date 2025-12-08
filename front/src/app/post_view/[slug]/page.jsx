@@ -33,7 +33,16 @@ function BookDetailsView({ authorName, updatedAt, coverImgUrl, content }) {
                 <div>
                     <b>(본문)</b>
                 </div>
-                <div>{content}</div>
+                <div
+                    className="mt-2"
+                    style={{
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        overflowWrap: "break-word"
+                    }}
+                >
+                    {content}
+                </div>
             </div>
         </div>
     );
