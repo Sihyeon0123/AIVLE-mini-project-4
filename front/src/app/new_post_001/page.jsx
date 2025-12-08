@@ -6,26 +6,92 @@ function Page() {
 
     // ======================= State 저장 공간 ========================
 
-    const [제목, setTitle] = useState("");
-    const [설명, setDescription] = useState("");
-    const [내용, setContent] = useState("");
-    const [카테고리, setCategory] = useState("");
-    const [생성표지 , setPreviewImageUrl] = useState("");
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [content, setContent] = useState("");
+    const [category, setCategory] = useState("");
+    const [img , setPreviewImageUrl] = useState("");
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         const postData = {
-            제목,
-            설명,
-            내용,
-            카테고리
+            title,
+            description,
+            content,
+            category,
         };
-        localStorage.setItem("postData", JSON.stringify(postData));
         console.log(postData);
-        window.open("/new_post_002", "_blank");
+
+        try {
+            const response = await fetch('http://localhost:8080/api/books/cover/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(postData),
+            });
+
+            if (!title || !description || !content || !category) {
+                alert("제목, 설명, 내용, 카테고리를 모두 입력해 주세요.");
+                return;
+            }
+
+            if (response.ok) {
+                const result = await response.json();
+                alert("데이터가 저장되었습니다.");
+
+                window.open("/new_post_002", "_blank");
+
+            } else {
+                console.error("데이터 전송 실패:", response.status, response.statusText);
+                alert(`데이터 전송에 실패했습니다. (HTTP Error: ${response.status})`);
+            }
+        } catch (error) {
+            console.error("네트워크 오류:", error);
+            alert("서버 연결에 실패했습니다.");
+        }
     }
+
+    // ======================= 게시물 게시 ========================
+
+    const finalCheck = async () => {
+        if (!title || !description || !content || !category || !img) {
+            alert("제목, 설명, 내용, 카테고리, 이미지 중 비어있는 곳이 존재합니다..");
+            return;
+        }
+
+        // 최종 데이터 구성
+        const finalPostData = {
+            title,
+            description,
+            content,
+            category,
+            img
+        };
+
+        // 백엔드에 최종 저장 요청
+        try {
+            const response = await fetch('http://localhost:8080/api/books/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(finalPostData),
+            });
+
+            if (response.ok) {
+                alert("게시물이 성공적으로 등록되었습니다!");
+                window.location.href = "/";
+            } else {
+                console.error("게시물 등록 실패:", response.status, response.statusText);
+                alert(`게시물 등록 실패: ${response.statusText}`);
+            }
+        } catch (error) {
+            console.error("최종 등록 오류:", error);
+            alert("서버 연결에 실패하여 게시물을 등록할 수 없습니다.");
+        }
+    };
 
     useEffect(() => {
         const handleMessage = (event) => {
+
             if (event.data && event.data.imageUrl) {
                 console.log("받은 이미지 URL:", event.data.imageUrl);
                 setPreviewImageUrl(event.data.imageUrl);
@@ -127,9 +193,6 @@ function Page() {
         color: 'white',
     }
 
-    const finalCheck = {
-
-    }
 
     // =======================구==분==선===============================
 
@@ -143,7 +206,7 @@ function Page() {
                     type = 'text'
                     placeholder= '제목을 입력해 주세요.'
                     style = {titleInputStyle}
-                    value={제목}
+                    value={title}
                     onChange={(e) => setTitle(e.target.value)}
                 />
             </div>
@@ -153,8 +216,8 @@ function Page() {
 
                 <div style = {previewImageStyle}>
                     <div style={imageAreaStyle}>
-                        {생성표지 ? (
-                            <img src={생성표지} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        {img ? (
+                            <img src={img} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : (
                             ""
                         )}
@@ -167,7 +230,7 @@ function Page() {
                     <textarea
                         placeholder = "작품 설명을 입력해 주세요."
                         style = {textInputStyle}
-                        value={설명}
+                        value={description}
                         onChange={(e) => setDescription(e.target.value)}
                     />
 
@@ -176,7 +239,7 @@ function Page() {
                     <textarea
                         placeholder = "작품 내용을 입력해 주세요."
                         style = {textInputStyle}
-                        value={내용}
+                        value={content}
                         onChange={(e) => setContent(e.target.value)}
                     />
 
@@ -184,7 +247,7 @@ function Page() {
                     <div style = {textStyle}>카테고리</div>
                     <select
                         style = {{backgroundColor: 'white'}}
-                        value={카테고리}
+                        value={category}
                         onChange={(e) => setCategory(e.target.value)}>
 
                         <option value="">카테고리 선택</option>
@@ -207,11 +270,6 @@ function Page() {
                         </button>
                     </div>
                 </div>
-
-
-
-
-
             </div>
         </div>
     );
