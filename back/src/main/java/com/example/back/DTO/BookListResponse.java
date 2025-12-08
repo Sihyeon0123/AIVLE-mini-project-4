@@ -40,6 +40,7 @@ public class BookListResponse {
             this.bookId = book.getId();
             this.title = book.getTitle();
             this.categoryId = book.getCategory().getId();
+            this.imageUrl = book.getImageUrl();
             this.createdAt = book.getCreated_at();
             this.updatedAt = book.getUpdated_at();
         }
