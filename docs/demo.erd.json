@@ -5,7 +5,7 @@
     "width": 2000,
     "height": 2000,
     "scrollTop": 0,
-    "scrollLeft": -49.7764,
+    "scrollLeft": -58.7764,
     "zoomLevel": 1,
     "show": 431,
     "database": 4,
@@ -444,19 +444,19 @@
         "id": "cPSpvDwDiDL3n8tvFpilr",
         "tableId": "a2XtX2Ss2NZgqqUAt_wrJ",
         "name": "name",
-        "comment": "",
+        "comment": "카테고리 이름",
         "dataType": "VARCHAR(100)",
         "default": "",
         "options": 8,
         "ui": {
           "keys": 0,
           "widthName": 60,
-          "widthComment": 60,
+          "widthComment": 77,
           "widthDataType": 81,
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1765177175955,
+          "updateAt": 1765177584528,
           "createAt": 1764817185816
         }
       },
