@@ -42,7 +42,8 @@ public class SecurityConfig {
                     "/api/auth/update",
                     "/api/auth/delete",
                     "/api/books",
-                    "/api/books/*"
+                    "/api/books/*",
+                    "/api/auth/apikey"
                 ).authenticated()
                 .anyRequest().permitAll()
             )
