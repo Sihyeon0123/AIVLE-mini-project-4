@@ -67,8 +67,12 @@ function Page() {
         const apiKey = await getUserApiKey();
         if (!apiKey) return;
 
+        // 🚨 수정: categoryId 대신 categoryName을 사용하도록 변경
+        // categoryName이 없으면 postData에 저장된 categoryId를 임시로 사용
+        const categoryPrompt = currentData.categoryName || currentData.categoryId;
+
         // DALL·E 프롬프트 구성
-        const prompt = `제목: ${currentData.title}, 설명: ${currentData.description},  앞의 내용을 기반으로 예술적인 책 표지 이미지를 생성. 표지 이미지는 ${currentData.categoryId}에 맞게.`;
+        const prompt = `제목: ${currentData.title}, 설명: ${currentData.description},  앞의 내용을 기반으로 예술적인 책 표지 이미지를 생성. 표지 이미지는 **${categoryPrompt}**에 맞게.`;
 
         try {
             setImageUrl("");
