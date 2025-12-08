@@ -7,6 +7,7 @@ export default function MyInfoPage() {
   // 화면에 표시/입력되는 값들 상태 관리
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
+  const [originalName, setOriginalName] = useState('');
   const [pw, setPw] = useState('');
   const [pwCheck, setPwCheck] = useState('');
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function MyInfoPage() {
 
     setUserId(id);
     setUserName(name);
+    setOriginalName(name);
   }, []);
 
   // 회원정보 수정
@@ -83,7 +85,7 @@ export default function MyInfoPage() {
         method: 'PATCH', // 백엔드 @PatchMapping("/update")와 일치
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`, // ✅ 토큰 필수
+          Authorization: `Bearer ${accessToken}`, // 토큰 필수
         },
         body: JSON.stringify(body),
       });
@@ -108,46 +110,6 @@ export default function MyInfoPage() {
       }
     } catch (error) {
       console.error('회원정보 수정 요청 중 오류:', error);
-      alert('서버와 통신 중 오류가 발생했습니다.');
-    }
-  };
-
-  // 로그아웃
-  const handleLogout = async () => {
-    const accessToken = sessionStorage.getItem('accessToken');
-
-    if (!accessToken) {
-      alert('로그인 정보가 없습니다. 다시 로그인 해주세요.');
-      router.push('/login');
-      return;
-    }
-
-    try {
-      const res = await fetch('http://localhost:8080/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`, // ✅ 컨트롤러가 여기서 읽음
-        },
-        credentials: 'include',
-      });
-
-      const result = await res.json();
-      console.log('로그아웃 응답:', result);
-
-      // 성공 여부 상관없이 프론트 쪽 세션은 지워버리는 게 안전
-      sessionStorage.removeItem('accessToken');
-      sessionStorage.removeItem('userId');
-      sessionStorage.removeItem('userName');
-
-      if (res.ok && result.status === 'success') {
-        alert(result.message || '로그아웃 되었습니다.');
-      } else {
-        alert(result.message ?? '로그아웃에 실패했습니다.');
-      }
-
-      router.push('/login');
-    } catch (error) {
-      console.error('로그아웃 요청 중 오류:', error);
       alert('서버와 통신 중 오류가 발생했습니다.');
     }
   };
@@ -230,6 +192,17 @@ export default function MyInfoPage() {
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
             />
+            {originalName && (
+              <div
+                style={{
+                  marginTop: '4px',
+                  fontSize: '12px',
+                  color: '#999',
+                }}
+              >
+                현재 등록된 이름: {originalName}
+              </div>
+            )}
           </label>
 
           <label>
@@ -263,7 +236,6 @@ export default function MyInfoPage() {
               회원 탈퇴
             </button>
           </div>
-
         </form>
       </div>
     </div>
