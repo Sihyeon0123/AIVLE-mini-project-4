@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Navbar, Container, Nav, NavDropdown, Row, Col, Form, Button } from "react-bootstrap";
 
 export default function MainNavbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
+  const pathname = usePathname(); 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     setIsLoggedIn(!!token);
-  }, []);
+  }, [pathname]);
 
   return (
     <Navbar className="navbar navbar-expand-lg navbar-light bg-light">

@@ -49,6 +49,7 @@ export default function LogoutPage() {
         );
 
         router.replace('/');
+        router.refresh();
       }
     };
 
