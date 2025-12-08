@@ -1,20 +1,21 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import { useParams, useRouter } from 'next/navigation';
+
+import api from "../../api/apiClient";
 
 // (컴포넌트) 책 정보
 function BookDetailsView({ authorName, updatedAt, coverImgUrl, content }) {
     return (
         <div className="row justify-content-center">
             {/* 왼쪽: 이미지 */}
-            <div className="col-12 col-md-3 text-center">
+            <div className="col-12 col-md-6 text-center">
                 <br/>
                 {coverImgUrl && (
                     <img
                         src={coverImgUrl}
-                        width={300}
+                        width={600}
                         className="img-fluid"
                         alt="cover"
                     />
@@ -25,7 +26,7 @@ function BookDetailsView({ authorName, updatedAt, coverImgUrl, content }) {
                 <br/>
                 <div><b>작성자: </b>{authorName}</div>
                 <br/>
-                <div><b>수정일: </b> {updatedAt}</div>
+                <div><b>수정일: </b>{updatedAt}</div>
                 <br/>
                 <div><b>(본문)</b></div>
                 <div
@@ -42,29 +43,19 @@ function BookDetailsView({ authorName, updatedAt, coverImgUrl, content }) {
 }
 
 // (컴포넌트) 수정/삭제 버튼
-function BookEditMenu() {
+function BookEditMenu({ onEdit, onDelete }) {
     return (
         <div className="row justify-content-center mt-4">
             <div className="col-auto">
                 <button className="btn btn-primary me-2"
-                    onClick={()=>{
-                        // TODO: 수정 버튼 눌렀을 시의 처리
-                    }}>수정</button>
+                    onClick={onEdit}
+                >수정</button>
                 <button className="btn btn-danger"
-                    onClick={()=>{
-                        // TODO: 삭제 버튼 눌렀을 시의 처리
-                    }}>삭제</button>
+                    onClick={onDelete}
+                >삭제</button>
             </div>
         </div>
     );
-}
-
-async function deleteBook() {
-    const apiCallRes = await axios.delete(
-        `http://localhost:8080/api/books/delete/${idx}`
-    );
-    const result = apiCallRes.data;
-
 }
 
 // // Mock Response (Success)
@@ -102,6 +93,9 @@ async function deleteBook() {
 export default function PostView(props){
     const router = useRouter();
 
+    // slug (= bookId)
+    const { slug } = useParams();
+
     // State: 도서 세부 데이터
     const [bookData, setBookData]=useState({
         owner_id:'',
@@ -111,32 +105,25 @@ export default function PostView(props){
         content:''
     })
 
-    // State
+    // State: 작성자 여부
     const [isOwner, setIsOwner]=useState(false);
+
+    // 현재 사용자의 ID 확인
+    const getCurrentUserId = async()=>{
+        // accessToken (없으면 false 판정)
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            return "";
+        }
+        // 현재 사용자 ID 확인해서 리턴
+        const response = await api.get(`http://localhost:8080/api/auth/user-info`);
+        return (response.status !== 200) ? "" : String(response.data.id);
+    }
 
     // 현재 사용자의 ID가 입력된 ID와 일치하는지 확인
     const checkCurrentUserIs = async(id)=> {
-        // accessToken (없으면 false 판정)
-        const token =
-            typeof window !== "undefined"
-                ? localStorage.getItem("accessToken")
-                : null;
-        if (!token) {
-            return false;
-        }
-        // 현재 사용자 ID 확인
-        const response = await axios.get(
-            `http://localhost:8080/api/auth/user-info`, {
-                headers: {
-                    Authorization:`Bearer ${token}`
-                }}
-        );
-        if (response.status !== 200) {
-            console.log("사용자 ID를 확인할 수 없습니다");
-            return false;
-        }
-        // (판정)
-        if (String(response.data.id) === String(id))
+        const currentUserId = await getCurrentUserId();
+        if (currentUserId === String(id))
         {
             console.log("현재 사용자 ===", id);
             return true;
@@ -146,7 +133,7 @@ export default function PostView(props){
         }
     }
 
-    // (도서 정보 조회 처리)
+    // (도서 정보 조회)
     const getBookDetails = async(idx)=>{
         //// MEMO: 일단은 하드코딩해놓은 거 사용
         //let response = ((Math.random() < 1.0) ?
@@ -154,9 +141,7 @@ export default function PostView(props){
         //);
         //
         try {
-            const response = await fetch(
-                `http://localhost:8080/api/books/detail/${idx}`
-            );
+            const response = await fetch(`http://localhost:8080/api/books/detail/${idx}`);
             const response_body = await response.json();
             //console.log(response_body.status);
             //console.log(response_body.message);
@@ -171,9 +156,10 @@ export default function PostView(props){
                     owner_id:response_body.data.ownerUser,
                     owner_nickname:owner_nickname,
                     updated_at:response_body.data.updatedAt,
-                    cover_img_url:response_body?.data?.imageUrl ?? "",
+                    cover_img_url:`http://localhost:8080/api/books/cover/${idx}`,
                     content:response_body.data.content
                 });
+                // 작성자 여부 반영
                 const ownership = await checkCurrentUserIs(response_body.data.ownerUser);
                 setIsOwner(ownership);
             } else {
@@ -188,29 +174,61 @@ export default function PostView(props){
         }
     }
 
-    // slug로 들어온 도서ID로 도서 정보 조회
+    // 도서 편집 화면으로 이동
+    const editBook = async()=>{
+        // 작성자 여부 확인 (로그인 여부도 같이 확인됨)
+        const ownership = await checkCurrentUserIs(bookData.owner_id);
+        if (!ownership) {
+            alert("본인이 등록한 도서만 편집할 수 있습니다.");
+            return;
+        }
+        // 이동 처리
+        router.push(`/post_edit/${slug}`);
+    }
+
+    // 도서 삭제 처리
+    const deleteBook = async()=>{
+        // 작성자 여부 확인 (로그인 여부도 같이 확인됨)
+        const ownership = await checkCurrentUserIs(bookData.owner_id);
+        if (!ownership) {
+            alert("본인이 등록한 도서만 삭제할 수 있습니다.");
+            return;
+        }
+        // accessToken 가져오기
+        // - 작성자라고 판정된 시점에서 accessToken은 반드시 LocalStorage에 존재함
+        const token = localStorage.getItem("accessToken");
+        // 삭제 여부 확인
+        const confirmed = window.confirm("정말 삭제하시겠습니까?");
+        if (!confirmed) return;
+        // 삭제 처리
+        try {
+            await api.delete(`http://localhost:8080/api/books/delete/${slug}`);
+            alert("삭제되었습니다.");
+            router.back();
+        } catch (error) {
+            console.error("삭제 실패:", error);
+            alert("삭제 중 오류가 발생했습니다.");
+        }
+    };
+
+    // 도서 정보 조회
     useEffect(() => {
-        props.params.then(({slug})=>{
-            //console.log("idx :"+slug);
+        props.params.then(()=>{
             getBookDetails(slug);
         });
-    },[props.params]);
+    },[]);
 
     // 사용자가 작성자 본인일 경우에는 편집 메뉴 추가
     return (
         <div className="container d-flex justify-content-center">
             <div className="w-100">
                 <BookDetailsView
-                    coverImgUrl={
-                        bookData.cover_img_url.length < 1
-                            ? null
-                            : bookData.cover_img_url
-                    }
+                    coverImgUrl={bookData.cover_img_url}
                     updatedAt={bookData.updated_at}
                     authorName={bookData.owner_id}
                     content={bookData.content}
                 />
-                {isOwner && <BookEditMenu />}
+                {isOwner && <BookEditMenu onEdit={editBook} onDelete={deleteBook} />}
             </div>
         </div>
     );
