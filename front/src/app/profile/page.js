@@ -19,9 +19,17 @@ export default function MyInfoPage() {
     setUserName(name);
   }, []);
 
-  // 회원정보 수정 (⚠️ 백엔드에 /api/auth/update 아직 없음)
+  // 회원정보 수정
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const accessToken = sessionStorage.getItem('accessToken');
+
+    if (!accessToken) {
+      alert('로그인 정보가 없습니다. 다시 로그인 해주세요.');
+      router.push('/login');
+      return;
+    }
 
     if (!userId) {
       alert('아이디 정보가 없습니다. 다시 로그인 해주세요.');
@@ -33,37 +41,42 @@ export default function MyInfoPage() {
       return;
     }
 
-    const body = {
-      id: userId,
-      pw: pw,
-      name: userName,
-    };
+    // name, pw 중에서 실제로 보낼 값만 구성
+    const body = {};
+    if (userName) body.name = userName;
+    if (pw) body.pw = pw;
+
+    if (Object.keys(body).length === 0) {
+      alert('변경할 내용을 입력해주세요.');
+      return;
+    }
 
     console.log('회원정보 수정 요청 데이터:', body);
 
     try {
       const res = await fetch('http://localhost:8080/api/auth/update', {
-        method: 'POST',
+        method: 'PATCH',                // ✅ 백엔드 @PatchMapping("/update")
         headers: {
           'Content-Type': 'application/json',
-          // 토큰 헤더로 보낼지 여부는 백엔드 설계에 따라 추가
-          // 'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
+          Authorization: `Bearer ${accessToken}`,  // ✅ 토큰 필수
         },
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) {
-        throw new Error('서버 오류');
-      }
-
       const result = await res.json();
       console.log('회원정보 수정 응답:', result);
 
-      if (result.status === 'success') {
+      if (res.ok && result.status === 'success') {
         alert('회원정보가 성공적으로 수정되었습니다.');
 
         // 이름이 바뀌었으면 세션도 갱신
-        sessionStorage.setItem('userName', userName);
+        if (body.name) {
+          sessionStorage.setItem('userName', body.name);
+        }
+
+        // 비밀번호 입력칸 초기화
+        setPw('');
+        setPwCheck('');
       } else {
         alert(result.message ?? '회원정보 수정에 실패했습니다.');
       }
@@ -75,9 +88,9 @@ export default function MyInfoPage() {
 
   // 로그아웃
   const handleLogout = async () => {
-    const token = sessionStorage.getItem('token');
+    const accessToken = sessionStorage.getItem('accessToken');
 
-    if (!token) {
+    if (!accessToken) {
       alert('로그인 정보가 없습니다. 다시 로그인 해주세요.');
       router.push('/login');
       return;
@@ -87,26 +100,26 @@ export default function MyInfoPage() {
       const res = await fetch('http://localhost:8080/api/auth/logout', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          // ✅ 컨트롤러가 Authorization 헤더에서 토큰을 읽음
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`, // ✅ 컨트롤러가 여기서 읽음
         },
+        credentials: 'include',
       });
 
       const result = await res.json();
       console.log('로그아웃 응답:', result);
 
+      // 성공 여부와 상관없이 프론트 쪽 세션은 지워버리는 게 안전
+      sessionStorage.removeItem('accessToken');
+      sessionStorage.removeItem('userId');
+      sessionStorage.removeItem('userName');
+
       if (res.ok && result.status === 'success') {
         alert(result.message || '로그아웃 되었습니다.');
-
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('userId');
-        sessionStorage.removeItem('userName');
-
-        router.push('/login');
       } else {
         alert(result.message ?? '로그아웃에 실패했습니다.');
       }
+
+      router.push('/login');
     } catch (error) {
       console.error('로그아웃 요청 중 오류:', error);
       alert('서버와 통신 중 오류가 발생했습니다.');
@@ -115,9 +128,9 @@ export default function MyInfoPage() {
 
   // 회원 탈퇴
   const handleDelete = async () => {
-    const token = sessionStorage.getItem('token');
+    const accessToken = sessionStorage.getItem('accessToken');
 
-    if (!token) {
+    if (!accessToken) {
       alert('로그인 정보가 없습니다. 다시 로그인 해주세요.');
       router.push('/login');
       return;
@@ -128,7 +141,9 @@ export default function MyInfoPage() {
       return;
     }
 
-    const ok = window.confirm('정말로 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.');
+    const ok = window.confirm(
+      '정말로 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.'
+    );
     if (!ok) return;
 
     try {
@@ -136,12 +151,10 @@ export default function MyInfoPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // ✅ 여기서도 Authorization 헤더 필수
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`, // ✅ 여기서도 필수
         },
         body: JSON.stringify({
-          // ✅ DeleteRequest는 pw만 받음
-          pw,
+          pw, // ✅ DeleteRequest는 pw만 받음
         }),
       });
 
