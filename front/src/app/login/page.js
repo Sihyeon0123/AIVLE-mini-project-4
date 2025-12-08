@@ -8,8 +8,14 @@ export default function LoginPage() {
   const [pw, setPw] = useState('');
   const router = useRouter();
 
+  // 🔴 타입 부분 제거 (e: React.FormEvent → e)
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    if (!id || !pw) {
+      alert('아이디와 비밀번호를 모두 입력해주세요.');
+      return;
+    }
 
     console.log('서버로 보낼 데이터:', { id, pw });
 
@@ -19,44 +25,45 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        //credentials: 'include', // refreshToken 쿠키 받으려면 필요
         body: JSON.stringify({ id, pw }),
       });
 
-      // 헤더에서 토큰 먼저 꺼내기
+      // 응답 바디보다 먼저 헤더에서 토큰 꺼내기
       const authHeader = res.headers.get('Authorization');
-      let token = null;
+
+      // 🔴 타입 부분 제거 (string | null → 그냥 JS에서 null로 초기화)
+      let accessToken = null;
+
       if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7); // "Bearer " 떼고 순수 토큰만 추출
+        accessToken = authHeader.substring(7); // "Bearer " 떼고 순수 토큰만
       }
 
       const result = await res.json();
-      console.log('서버 응답:', result);
+      console.log('HTTP status:', res.status);
+      console.log('서버 응답 JSON:', result);
 
-      //if (res.ok && result.status === 'success')
-      if (res.ok) {
+      if (res.ok && result.status === 'success') {
         alert('로그인 성공!');
 
-        if (token) {
-          sessionStorage.setItem('token', token);
+        // accessToken 저장
+        if (accessToken) {
+          sessionStorage.setItem('accessToken', accessToken);
         }
 
-        // 아이디 저장 (백엔드 LoginResponse.userId)
+        // userId 저장 (응답에 있으면 그걸 쓰고, 없으면 입력한 id 사용)
         if (result.userId) {
           sessionStorage.setItem('userId', result.userId);
         } else {
           sessionStorage.setItem('userId', id);
         }
 
-        // 이름은 백엔드에서 안 내려줌 → 지금은 비워둘 수밖에 없음
-        // 나중에 백엔드가 name 내려주면 아래처럼 사용
         // if (result.name) {
         //   sessionStorage.setItem('userName', result.name);
         // }
 
-        router.push('/');
-
+        router.push('/'); // 메인 페이지로 이동
       } else {
-        // 오류 케이스
         if (res.status === 404) {
           alert(result.message || '등록되지 않은 아이디입니다.');
         } else if (res.status === 401) {
