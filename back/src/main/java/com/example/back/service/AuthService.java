@@ -308,7 +308,6 @@ public class AuthService {
         
         // DB에 저장된 Refresh Token 조회
         RefreshToken savedToken = refreshTokenRepository.findByUserId(userId).orElse(null);
-        log.info("123");
         if (savedToken == null) {
             log.warn("리프레시 토큰 없음: userId={}", userId);
             throw new RuntimeException("저장된 리프레시 토큰이 없습니다. 다시 로그인해야 합니다.");

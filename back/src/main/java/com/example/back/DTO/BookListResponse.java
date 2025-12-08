@@ -30,7 +30,7 @@ public class BookListResponse {
         private Long bookId;
         private String title;
         private Long categoryId;
-        private Integer imageUrl;
+        private String imageUrl;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
