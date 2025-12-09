@@ -31,7 +31,7 @@ public class BookListResponse {
 
         private Long bookId;
         private String title;
-        private Long category;
+        private String category;
         private String imageUrl;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
@@ -39,7 +39,7 @@ public class BookListResponse {
         public BookItem(Book book) {
             this.bookId = book.getId();
             this.title = book.getTitle();
-            this.category = book.getCategory().getId();
+            this.category = book.getCategoryId().getName();
             this.imageUrl = book.getImageUrl();
             this.createdAt = book.getCreated_at();
             this.updatedAt = book.getUpdated_at();

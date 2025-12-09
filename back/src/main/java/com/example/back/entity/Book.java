@@ -23,8 +23,8 @@ public class Book {
     private User user; // 작성자 id
 
     @ManyToOne
-    @JoinColumn(name = "category", nullable = false)
-    private Category category; // 카테고리
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category categoryId; // 카테고리
 
     @Column(nullable = false, length = 100)
     private String title; // 작품 제목

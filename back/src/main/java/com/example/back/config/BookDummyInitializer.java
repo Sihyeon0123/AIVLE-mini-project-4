@@ -111,7 +111,7 @@ public class BookDummyInitializer implements CommandLineRunner {
             // 3) Book 생성
             Book book = new Book();
             book.setUser(admin);
-            book.setCategory(randomCategory);  // Category 엔티티 설정
+            book.setCategoryId(randomCategory);  // Category 엔티티 설정
             book.setTitle("더미 책 제목 " + i);
             book.setDescription("이것은 더미 책 설명입니다.");
             book.setContent("이것은 더미 책 내용입니다. " + i + "번째 더미 데이터입니다.");

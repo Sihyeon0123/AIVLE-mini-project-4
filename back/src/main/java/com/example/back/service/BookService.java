@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +44,8 @@ public class BookService {
          *     - 전체 페이지 수 (totalPages)
          *     - 도서 목록 리스트 (books)
          */
-        Pageable pageable = PageRequest.of(page, size);
+        Sort sort = Sort.by(Sort.Direction.DESC, "id");
+        Pageable pageable = PageRequest.of(page, size, sort);
         Page<Book> result = bookRepository.findAll(pageable);
 
         // Page<Book> -> BookListResponse 로 변환
@@ -66,7 +68,8 @@ public class BookService {
             throw new IllegalArgumentException("검색어(title)가 올바르지 않습니다.");
         }
 
-        Pageable pageable = PageRequest.of(page, size);
+        Sort sort = Sort.by(Sort.Direction.DESC, "id"); // 최신 순 정렬
+        Pageable pageable = PageRequest.of(page, size, sort);
         Page<Book> result = bookRepository.findByTitleContainingIgnoreCase(title.trim(), pageable);
 
         log.info("도서 제목 검색 서비스 완료: title={}, totalElements={}", title, result.getTotalElements());
@@ -132,16 +135,16 @@ public class BookService {
                 });
 
         // 3) 카테고리 조회
-        Category category = categoryRepository.findById(req.getCategory())
+        Category category = categoryRepository.findById(req.getCategoryId())
                 .orElseThrow(() -> {
-                    log.warn("도서 등록 실패 - 카테고리 조회 실패: categoryId={}", req.getCategory());
+                    log.warn("도서 등록 실패 - 카테고리 조회 실패: categoryId={}", req.getCategoryId());
                     return new RuntimeException("카테고리 정보를 찾을 수 없습니다.");
                 });
 
         // 4) Book 엔티티 생성
         Book book = new Book();
         book.setUser(user);
-        book.setCategory(category);
+        book.setCategoryId(category);
         book.setTitle(req.getTitle());
         book.setDescription(req.getDescription());
         book.setContent(req.getContent());
@@ -213,14 +216,14 @@ public class BookService {
         }
 
         // 5) 카테고리 조회
-        Category category = categoryRepository.findById(req.getCategory())
+        Category category = categoryRepository.findById(req.getCategoryId())
                 .orElseThrow(() -> {
-                    log.warn("도서 수정 실패 - 카테고리 조회 실패: categoryId={}", req.getCategory());
+                    log.warn("도서 수정 실패 - 카테고리 조회 실패: categoryId={}", req.getCategoryId());
                     return new RuntimeException("카테고리 정보를 찾을 수 없습니다.");
                 });
 
         // 6) 필드 수정
-        book.setCategory(category);
+        book.setCategoryId(category);
         book.setTitle(req.getTitle());
         book.setDescription(req.getDescription());
         book.setContent(req.getContent());
