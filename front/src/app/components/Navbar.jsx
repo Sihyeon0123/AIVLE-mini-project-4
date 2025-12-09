@@ -20,7 +20,6 @@ export default function MainNavbar() {
         <Navbar.Brand href="/">Library System</Navbar.Brand>
         {/* 왼쪽 메뉴 */}
         <Nav className="me-auto">
-          <Nav.Link href="/">홈</Nav.Link>
           <Nav.Link href="/">도서 목록</Nav.Link>
           <Form
             className="d-flex align-items-center ms-3"
@@ -40,7 +39,7 @@ export default function MainNavbar() {
               </Col>
 
               <Col xs="auto">
-                <Button type="submit" variant="primary" className="px-4" style={{ borderRadius: "20px" }}>
+                <Button type="submit" variant="dark" className="px-4" style={{ borderRadius: "20px" }}>
                   검색
                 </Button>
               </Col>

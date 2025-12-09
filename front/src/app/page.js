@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Pagination from "@mui/material/Pagination";   // MUI Pagination 추가
+import Pagination from "@mui/material/Pagination"; // MUI Pagination 추가
 import "./css/books.css";
 
 export default function Home() {
@@ -50,17 +50,18 @@ export default function Home() {
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
         <h2 className="section-title m-0">📚 도서 목록</h2>
 
-          <div className="flex justify-end items-center gap-3">
-              <button
-                  className="badge rounded-pill text-bg-light border books-count-badge"
-                  onClick={() => window.location.href = "/new_post_001"}>
-                  책 추가
-              </button>
+        <div className="flex justify-end items-center gap-3">
+          <button
+            className="badge rounded-pill text-bg-light border books-count-badge"
+            onClick={() => (window.location.href = "/new_post_001")}
+          >
+            책 추가
+          </button>
 
-              <span className="badge rounded-pill text-bg-light border books-count-badge">
-                {loading ? "불러오는 중..." : `총 ${totalItems}권`}
-              </span>
-          </div>
+          <span className="badge rounded-pill text-bg-light border books-count-badge">
+            {loading ? "불러오는 중..." : `총 ${totalItems}권`}
+          </span>
+        </div>
       </div>
 
       {/* 로딩 */}
@@ -107,11 +108,26 @@ export default function Home() {
                   />
                 </div>
 
-                {/* 제목 영역 */}
+                {/* 제목 + 카테고리 배치 */}
                 <div className="card-body py-2">
-                  <h5 className="card-title book-title mb-0">
+
+                  {/* 책 제목 */}
+                  <h5 className="card-title book-title mb-1">
                     {book.title || "제목 없음"}
                   </h5>
+
+                  {/* 카테고리 배지 (pill 형태) */}
+                  <span
+                    className="badge bg-secondary ms-2"
+                    style={{
+                      fontSize: "0.75rem",
+                      borderRadius: "10px",
+                      padding: "4px 8px",
+                      opacity: 0.85,
+                    }}
+                  >
+                    {book.category || "미분류"}
+                  </span>
                 </div>
 
                 {/* 푸터 */}
@@ -133,7 +149,7 @@ export default function Home() {
             onChange={(e, value) => setPage(value)}
             color="primary"
             shape="rounded"
-            size="large"   // ← 크기 키우기
+            size="large"
           />
         </div>
       )}
