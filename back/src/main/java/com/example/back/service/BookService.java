@@ -25,6 +25,7 @@ public class BookService {
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final BookCoverStorageService bookCoverStorageService;
 
     public BookListResponse getBooks(int page, int size) {
         /**
@@ -148,13 +149,33 @@ public class BookService {
         book.setTitle(req.getTitle());
         book.setDescription(req.getDescription());
         book.setContent(req.getContent());
-        book.setImageUrl(req.getImageUrl());
 
-        // 5) 저장
+        // 5) 우선 Book 저장해서 bookId 확보
         Book saved = bookRepository.save(book);
+
+        log.info("도서 등록 서비스 - Book 저장 완료: bookId={}", saved.getId());
+
+        // 6) 이미지 URL이 요청에 들어온 경우에만 처리
+        if (req.getImageUrl() != null && !req.getImageUrl().isBlank()) {
+
+            String publicUrl = bookCoverStorageService.saveCoverFromUrl(
+                    req.getImageUrl(),
+                    saved.getId()
+            );
+
+            // 유효하지 않은 URL(403/404 등) → 도서 등록 자체를 막기
+            if (publicUrl == null) {
+                log.warn("도서 등록 실패 - 유효하지 않은 이미지 URL: {}", req.getImageUrl());
+                // 트랜잭션 롤백 → 이미 저장된 Book도 함께 롤백됨
+                throw new IllegalArgumentException("유효하지 않은 이미지 URL입니다.");
+            }
+
+            // 정상적으로 다운로드된 경우에만 이미지 URL 세팅
+            saved.setImageUrl(publicUrl);
+        }
+
         log.info("도서 등록 서비스 완료: bookId={}", saved.getId());
 
-        // 6) bookId만 반환
         return new BookCreateResponse(saved.getId());
     }
 
@@ -195,7 +216,7 @@ public class BookService {
             throw new IllegalArgumentException("도서 정보가 올바르지 않습니다.");
         }
 
-        // (선택) 2) 사용자 존재 여부 검증
+        // 2) 사용자 존재 여부 검증
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> {
                     log.warn("도서 수정 실패 - 사용자 조회 실패: userId={}", userId);
@@ -211,7 +232,8 @@ public class BookService {
 
         // 4) 소유자 검증 (본인 글만 수정 가능)
         if (!book.getUser().getId().equals(user.getId())) {
-            log.warn("도서 수정 실패 - 권한 없음: 요청 userId={}, 도서 소유자={}", userId, book.getUser().getId());
+            log.warn("도서 수정 실패 - 권한 없음: 요청 userId={}, 도서 소유자={}",
+                    userId, book.getUser().getId());
             throw new RuntimeException("본인이 등록한 도서만 수정할 수 있습니다.");
         }
 
@@ -222,16 +244,37 @@ public class BookService {
                     return new RuntimeException("카테고리 정보를 찾을 수 없습니다.");
                 });
 
-        // 6) 필드 수정
+        // 6) 기본 필드 수정
         book.setCategoryId(category);
         book.setTitle(req.getTitle());
         book.setDescription(req.getDescription());
         book.setContent(req.getContent());
-        book.setImageUrl(req.getImageUrl());
 
-        // 7) 저장 (또는 @Transactional + 더티 체킹으로 자동 반영)
+        // 7) 우선 기본 정보 저장
         Book saved = bookRepository.save(book);
-        log.info("도서 수정 서비스 완료: bookId={}", saved.getId());
+        log.info("도서 수정 기본 정보 저장 완료: bookId={}, imageUrl(초기)={}",
+                saved.getId(), saved.getImageUrl());
+
+        // 8) 이미지 URL이 요청에 들어온 경우에만 처리 (등록과 동일)
+        if (req.getImageUrl() != null && !req.getImageUrl().isBlank()) {
+
+            String publicUrl = bookCoverStorageService.saveCoverFromUrl(
+                    req.getImageUrl(),
+                    saved.getId()
+            );
+
+            // 유효하지 않은 URL(403/404 등) → 수정 자체를 막기 (트랜잭션 롤백)
+            if (publicUrl == null) {
+                log.warn("도서 수정 실패 - 유효하지 않은 이미지 URL: {}", req.getImageUrl());
+                throw new IllegalArgumentException("유효하지 않은 이미지 URL입니다.");
+            }
+
+            // 정상적으로 다운로드된 경우에만 이미지 URL 세팅
+            saved.setImageUrl(publicUrl);
+        }
+
+        log.info("도서 수정 서비스 완료: bookId={}, 최종 imageUrl={}",
+                saved.getId(), saved.getImageUrl());
 
         return new BookUpdateResponse(saved.getId());
     }

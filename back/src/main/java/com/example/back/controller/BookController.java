@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class BookController {
     private final BookService bookService;
-    private final String coverPath = "./uploads/bookcovers/";
+    private final String coverPath = "./back/uploads/bookcovers/";
 
     @GetMapping("/cover/{bookId}")
     @SuppressWarnings("null")
@@ -39,7 +39,7 @@ public class BookController {
          */
         log.info("커버 이미지 요청: bookId={}", bookId);
 
-        String filePath = coverPath + bookId + ".jpg";
+        String filePath = coverPath + bookId + ".png";
         File file = new File(filePath);
 
         // 이미지 파일 존재 여부 확인

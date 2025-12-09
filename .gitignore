@@ -103,3 +103,4 @@ build/
 
 ### ⚠️API 키, JWT Secret 정보가 포함된 파일
 application-secret.yaml
+/back/uploads/bookcovers/
