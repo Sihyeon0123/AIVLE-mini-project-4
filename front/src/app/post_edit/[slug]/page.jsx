@@ -1,188 +1,295 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useParams } from "next/navigation";
 
-import api from "../../api/apiClient";
+function Page() {
 
-// (컴포넌트) 책 정보
-function BookEditView({ bookTitle, bookDescription, bookContent }) {
-    return (
-        <div>
-        </div>
-    );
-}
+    const { slug } = useParams();   // ← /edit/123 이런 주소라면 123 가져오는 곳
 
-// (컴포넌트) 확인/취소 버튼
-function BookEditMenu( {onApply, onCancel} ) {
-    return (
-        <div className="row justify-content-center mt-4">
-            <div className="col-auto">
-                <button className="btn btn-primary me-2"
-                        onClick={onApply}
-                >확인</button>
-                <button className="btn btn-danger"
-                        onClick={onCancel}
-                >취소</button>
-            </div>
-        </div>
-    );
-}
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [content, setContent] = useState("");
+    const [categoryId, setCategory] = useState("");
+    const [imageUrl , setPreviewImageUrl] = useState("");
 
-// (화면 본체)
-export default function PostEdit(props){
-    const router = useRouter();
+    const [categories, setCategories] = useState([]);
 
-    // slug (= bookId)
-    const { slug } = useParams();
+    // ===================== 1) 카테고리 불러오기 ======================
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const res = await fetch("http://localhost:8080/api/categories");
+                const json = await res.json();
 
-    // State: 도서 세부 데이터
-    const [bookData, setBookData]=useState({
-        ownerId:'',
-        title:'',
-        categoryId:-1,
-        description:'',
-        imageUrl:'',
-        content:''
-    });
-
-    // State: 작성자 여부
-    const [isOwner, setIsOwner]=useState(false);
-
-    // 현재 사용자의 ID 확인
-    const getCurrentUserId = async()=>{
-        // accessToken (없으면 false 판정)
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
-            return "";
-        }
-        // 현재 사용자 ID 확인해서 리턴
-        const response = await api.get(`http://localhost:8080/api/auth/user-info`);
-        return (response.status !== 200) ? "" : String(response.data.id);
-    }
-
-    // 현재 사용자의 ID가 입력된 ID와 일치하는지 확인
-    const checkCurrentUserIs = async(id)=> {
-        const currentUserId = await getCurrentUserId();
-        if (currentUserId === String(id))
-        {
-            console.log("현재 사용자 ===", id);
-            return true;
-        } else {
-            console.log("현재 사용자 !==", id);
-            return false;
-        }
-    }
-
-    // (도서 정보 조회 처리)
-    const getBookDetails = async(idx)=>{
-        try {
-            const response = await fetch(`http://localhost:8080/api/books/detail/${idx}`);
-            const response_body = await response.json();
-            //console.log(response_body.status);
-            //console.log(response_body.message);
-            //console.log(response_body.data);
-            //
-            // 아무 문제 없이 진행되었으면 도서 정보 입력
-            if (response_body.status === 'success') {
-                console.log(response_body);
-                // 작성자 여부 확인 (로그인 여부도 같이 확인됨)
-                const ownership = await checkCurrentUserIs(response_body.data.ownerUser);
-                if (!ownership) {
-                    alert("본인이 등록한 도서만 편집할 수 있습니다.");
-                    return
+                if (Array.isArray(json.data)) {
+                    setCategories(json.data);
                 }
-                setIsOwner(ownership);
-                // 도서 정보 반영
-                setBookData({
-                    ownerId:response_body.data.ownerUser,
-                    categoryId: response_body.data.categoryId,
-                    title:response_body.data.title,
-                    description:response_body.data.description,
-                    imageUrl:response_body.data.imageUrl,
-                    content:response_body.data.content
-                });
-            } else {
-                // (책이 존재하지 않는 경우)
-                alert("존재하지 않는 도서입니다.");
-                router.back();
+            } catch (err) {
+                console.error("카테고리 불러오기 실패:", err);
             }
-        } catch {
-            // (가져오는 과정에서 에러가 발생한 경우)
-            alert("도서 정보를 가져올 수 없습니다.");
-            router.back();
-        }
-    }
+        };
 
-    // 내용 변경 적용
-    const applyBookEdit = async()=>{
-        // ID 유효 여부 확인
-        const userId = await getCurrentUserId();
-        if (userId.length < 1) {
+        loadCategories();
+    }, []);
+
+    // ===================== 2) 기존 게시물 데이터 불러오기 ======================
+    useEffect(() => {
+        if (!slug) return;
+
+        const loadPostData = async () => {
+            try {
+                const res = await fetch(`http://localhost:8080/api/books/detail/${slug}`);
+                const json = await res.json();
+
+                if (json.status === "success") {
+                    const d = json.data;
+
+                    // 🔥 저장된 값을 UI 입력칸에 넣어주기
+                    setTitle(d.title);
+                    setDescription(d.description);
+                    setContent(d.content);
+                    setCategory(d.categoryId);
+                    setPreviewImageUrl(d.imageUrl);
+                } else {
+                    alert("게시글을 불러오지 못했습니다.");
+                }
+            } catch (err) {
+                console.error("게시글 조회 실패:", err);
+                alert("서버 오류로 게시글을 불러올 수 없습니다.");
+            }
+        };
+
+        loadPostData();
+    }, [slug]);
+
+
+    // ========================== 기존 기능: 이미지 생성 ==========================
+    const handleSubmit = async () => {
+        if (!title || !description || !content || !categoryId) {
+            alert("제목, 설명, 내용, 카테고리를 모두 입력해 주세요.");
             return;
         }
-        console.log(userId);
-        if (userId !== bookData.ownerId) {
-            alert("본인이 등록한 도서만 편집할 수 있습니다.");
+
+        const postData = {
+            title,
+            description,
+            content,
+            categoryId,
+        };
+
+        localStorage.setItem("temp_post_data", JSON.stringify(postData));
+
+        window.open("/new_post_002", "_blank");
+    };
+
+    // ========================== 기존 기능: 최종 게시 ==========================
+    const finalCheck = async () => {
+        if (!title || !description || !content || !categoryId || !imageUrl) {
+            alert("모든 값을 입력해 주세요!");
             return;
         }
-        //
-        // 삭제 여부 확인
-        const confirmed = window.confirm("정말 변경하시겠습니까?");
-        if (!confirmed) return;
-        //
-        // accessToken 확인
-        // - 작성자라고 판정된 시점에서 accessToken은 반드시 LocalStorage에 존재함
-        const token = localStorage.getItem("accessToken");
-        //
-        // 변경 처리
-        const payload ={
-            categoryId: bookData.categoryId,
-            title: bookData.title,
-            description: bookData.description,
-            imageUrl: bookData.imageUrl,
-            content: bookData.content
+
+        const jwt = localStorage.getItem("accessToken");
+        if (!jwt) {
+            alert("로그인이 필요합니다.");
+            return;
         }
-        console.log(payload);
+
+        const finalPostData = {
+            title,
+            description,
+            content,
+            categoryId: Number(categoryId),
+            imageUrl
+        };
+
         try {
-            await api.put(`http://localhost:8080/api/books/update/${slug}`, payload);
-            router.back();
+            const response = await fetch(`http://localhost:8080/api/books/update/${slug}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwt}`,
+                },
+                body: JSON.stringify(finalPostData),
+            });
+
+            if (response.ok) {
+                alert("게시물이 성공적으로 수정되었습니다!");
+                window.location.href = "/";
+            } else {
+                alert(`수정 실패: ${response.statusText}`);
+            }
         } catch (error) {
-            console.error("변경 실패:", error);
-            alert("편집 내용 적용 과정에서 오류가 발생했습니다.");
+            alert("서버 연결 실패");
         }
     };
 
-    const input=(e)=>{
-        setBookData({...bookData, [e.target.name]:e.target.value});
-    }
-
-    // 도서 정보 조회
+    // ========================== 이미지 전달 (기존) ==========================
     useEffect(() => {
-        props.params.then(()=>{
-            getBookDetails(slug);
-        });
-    },[]);
+        const handleMessage = (event) => {
+            if (event.data && event.data.imageUrl) {
+                setPreviewImageUrl(event.data.imageUrl);
+            }
+        };
+        window.addEventListener("message", handleMessage);
+        return () => window.removeEventListener("message", handleMessage);
+    }, []);
 
-    // 사용자가 작성자 본인일 경우에는 편집 메뉴 추가
+    // ========================== UI 스타일은 그대로 ==========================
+    const containerStyle = {
+        maxWidth: '100%',
+        width: '80%',
+        minHeight: 'auto',
+        margin: '0 auto',
+        border: '1px solid black',
+        padding: '10px',
+        backgroundColor : 'gray',
+    };
+
+    const titleInputStyle = {
+        width: '100%',
+        fontSize: '20px',
+        marginTop: '10px',
+        border: 'none',
+        backgroundColor : 'white',
+        color : 'black',
+        borderRadius: '8px',
+    };
+
+    const mainContentStyle = {
+        display: 'flex',
+        flexWrap: 'wrap',
+        marginTop : '20px',
+        gap : '10px',
+    };
+
+    const previewImageStyle = {
+        flex: '0 0 30%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '15px',
+    };
+
+    const imageAreaStyle = {
+        height: '90%',
+        width: '100%',
+        border: '1px solid black',
+        backgroundColor : 'white',
+    };
+
+    const TextContentAreaStyle = {
+        flex: '1',
+        display: 'flex',
+        flexDirection: 'column',
+        paddingLeft: '10px',
+        gap: '10px',
+    };
+
+    const textInputStyle = {
+        backgroundColor: 'white',
+        minHeight: '200px',
+        maxHeight: '200px',
+        borderRadius: '8px',
+    };
+
+    const buttonContainerStyle = {
+        display: 'flex',
+        justifyContent: 'space-between',
+    };
+
+    const buttonStyle = {
+        margin: '10px',
+        border: '1px solid black',
+        borderRadius: '4px',
+        backgroundColor: 'white',
+        color: 'black',
+        paddingLeft: '5px',
+        paddingRight: '5px',
+    };
+
+    const textStyle = {
+        backgroundColor: 'black',
+        display: 'inline-block',
+        marginTop: '10px',
+        borderRadius: '8px',
+        paddingLeft: '5px',
+        paddingRight: '5px',
+        textAlign: 'center',
+        color: 'white',
+    };
+
+
     return (
-        <div className="container d-flex justify-content-center">
-            <div className="w-100">
-                <div>
-                    <br/>
-                    <div><b>제목: </b><input type="text" name="title" value={bookData.title} onChange={input}/></div>
-                    <br/>
-                    <div><b>설명: </b><input type="text" name="description" value={bookData.description} onChange={input}/></div>
-                    <br/>
-                    <div><b>(본문)</b></div>
-                    <br/>
-                    <div><textarea rows="3" name="content" value={bookData.content} onChange={input}/></div>
+        <div style={containerStyle}>
+
+            <div>
+                <div style={textStyle}>제목</div>
+                <input
+                    type='text'
+                    placeholder='제목을 입력해 주세요.'
+                    style={titleInputStyle}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                />
+            </div>
+
+            <div style={mainContentStyle}>
+
+                <div style={previewImageStyle}>
+                    <div style={imageAreaStyle}>
+                        {imageUrl && (
+                            <img src={imageUrl} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                        )}
+                    </div>
                 </div>
-                {isOwner && <BookEditMenu
-                    onCancel={()=>{router.back();}}
-                    onApply={applyBookEdit}
-                />}
+
+                <div style={TextContentAreaStyle}>
+
+                    <div style={textStyle}>작품 설명</div>
+                    <textarea
+                        placeholder="작품 설명을 입력해 주세요."
+                        style={textInputStyle}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                    />
+
+                    <div style={textStyle}>작품 내용</div>
+                    <textarea
+                        placeholder="작품 내용을 입력해 주세요."
+                        style={textInputStyle}
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                    />
+
+                    <div style={textStyle}>카테고리</div>
+                    <select
+                        style={{ backgroundColor: 'white' }}
+                        value={categoryId}
+                        onChange={(e) => setCategory(Number(e.target.value))}
+                    >
+                        <option value="">카테고리 선택</option>
+
+                        {categories.map((cat) => (
+                            <option key={cat.categoryId} value={cat.categoryId}>
+                                {cat.name}
+                            </option>
+                        ))}
+                    </select>
+
+                    <div style={buttonContainerStyle}>
+                        <button style={buttonStyle} onClick={handleSubmit}>
+                            이미지 생성
+                        </button>
+
+                        <button style={buttonStyle} onClick={finalCheck}>
+                            게시물 수정
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
+
+export default Page;
