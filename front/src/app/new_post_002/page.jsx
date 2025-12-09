@@ -167,7 +167,7 @@ function Page() {
         margin: '0 auto',
         border: '1px solid black',
         padding: '10px',
-        backgroundColor : 'gray'
+        backgroundColor : 'white'
     };
 
     // 미리보기 이미지 나오는 곳
