@@ -55,7 +55,7 @@ export default function Home() {
             className="badge rounded-pill text-bg-light border books-count-badge"
             onClick={() => (window.location.href = "/new_post_001")}
           >
-            책 추가
+            도서 등록
           </button>
 
           <span className="badge rounded-pill text-bg-light border books-count-badge">

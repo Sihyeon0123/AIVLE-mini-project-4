@@ -1,39 +1,71 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import "../../css/edit_post.css";
+
+import ConfirmModal from "@/app/components/ConfirmModal";
+
+import { generateCoverImage } from "@/app/api/openaiClient";
 
 function Page() {
-
-    const { slug } = useParams();   // ← /edit/123 이런 주소라면 123 가져오는 곳
+    const router = useRouter();
+    const { slug } = useParams();
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [content, setContent] = useState("");
     const [categoryId, setCategory] = useState("");
-    const [imageUrl , setPreviewImageUrl] = useState("");
+    const [imageUrl, setPreviewImageUrl] = useState("");
 
     const [categories, setCategories] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
-    // ===================== 카테고리 불러오기 ======================
+    const showToast = (msg, type = "error") => {
+        window.dispatchEvent(
+            new CustomEvent("show-toast", {
+                detail: { msg, type },
+            })
+        );
+    };
+
+    // [추가] --- 토큰 없는 경우 접근 차단 ---
+    useEffect(() => {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            window.dispatchEvent(
+                new CustomEvent("show-toast", {
+                    detail: {
+                    msg: "로그인이 필요한 페이지입니다.",
+                    type: "danger",
+                    },
+                })
+            );
+
+            router.replace("/");
+            return;
+        }
+    }, []);
+    // ---------------------------------------------------------
+
+    // ------------------ 카테고리 불러오기 ------------------
     useEffect(() => {
         const loadCategories = async () => {
             try {
                 const res = await fetch("http://localhost:8080/api/categories");
                 const json = await res.json();
-
-                if (Array.isArray(json.data)) {
-                    setCategories(json.data);
-                }
+                if (Array.isArray(json.data)) setCategories(json.data);
             } catch (err) {
-                console.error("카테고리 불러오기 실패:", err);
+                showToast("카테고리 불러오기 실패", "error");
             }
         };
 
         loadCategories();
     }, []);
 
-    // ===================== 기존 게시물 데이터 불러오기 ======================
+    // ------------------ 기존 게시물 불러오기 ------------------
     useEffect(() => {
         if (!slug) return;
 
@@ -44,30 +76,26 @@ function Page() {
 
                 if (json.status === "success") {
                     const d = json.data;
-
-                    // 저장된 값을 넣어주기
                     setTitle(d.title);
                     setDescription(d.description);
                     setContent(d.content);
                     setCategory(d.categoryId);
                     setPreviewImageUrl(d.imageUrl);
                 } else {
-                    alert("게시글을 불러오지 못했습니다.");
+                    showToast("게시글 불러오기 실패", "error");
                 }
             } catch (err) {
-                console.error("게시글 조회 실패:", err);
-                alert("서버 오류로 게시글을 불러올 수 없습니다.");
+                showToast("서버 오류로 게시글을 불러올 수 없습니다.", "error");
             }
         };
 
         loadPostData();
     }, [slug]);
 
-
-    // ========================== 이미지 생성 ==========================
+    // ------------------ 이미지 생성 ------------------
     const handleSubmit = async () => {
         if (!title || !description || !content || !categoryId) {
-            alert("제목, 설명, 내용, 카테고리를 모두 입력해 주세요.");
+            showToast("제목, 설명, 내용, 카테고리를 모두 입력해 주세요.", "error");
             return;
         }
 
@@ -76,23 +104,42 @@ function Page() {
             description,
             content,
             categoryId,
+            categoryName: categories.find(c => c.categoryId == categoryId)?.name,
         };
 
-        localStorage.setItem("temp_post_data", JSON.stringify(postData));
+        setIsLoading(true);
+        setPreviewImageUrl("");
 
-        window.open("/new_post_002", "_blank");
-    };
+        const url = await generateCoverImage(postData);
 
-    // ========================== 최종 게시 ==========================
-    const finalCheck = async () => {
-        if (!title || !description || !content || !categoryId || !imageUrl) {
-            alert("모든 값을 입력해 주세요!");
+        setIsLoading(false);
+
+        if (!url) {
+            showToast("이미지 생성에 실패했습니다.", "error");
             return;
         }
 
+        setPreviewImageUrl(url);
+        showToast("이미지가 성공적으로 생성되었습니다!", "success");
+    };
+
+    // ------------------ 최종 게시 확인 모달 ------------------
+    const finalCheck = () => {
+        if (!title || !description || !content || !categoryId || !imageUrl) {
+            showToast("모든 값을 입력해 주세요!", "error");
+            return;
+        }
+
+        setShowConfirm(true);
+    };
+
+    // ------------------ 최종 게시 실제 처리 ------------------
+    const handleConfirm = async () => {
+        setShowConfirm(false);
+
         const jwt = localStorage.getItem("accessToken");
         if (!jwt) {
-            alert("로그인이 필요합니다.");
+            showToast("로그인이 필요합니다.", "error");
             return;
         }
 
@@ -101,34 +148,38 @@ function Page() {
             description,
             content,
             categoryId: Number(categoryId),
-            imageUrl
+            imageUrl,
         };
 
         try {
             const response = await fetch(`http://localhost:8080/api/books/update/${slug}`, {
-                method: 'PUT',
+                method: "PUT",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${jwt}`,
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${jwt}`,
                 },
                 body: JSON.stringify(finalPostData),
             });
 
             if (response.ok) {
-                alert("게시물이 성공적으로 수정되었습니다!");
-                window.location.href = "/";
+                showToast("게시물이 성공적으로 수정되었습니다!", "success");
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 800);
             } else {
-                alert(`수정 실패: ${response.statusText}`);
+                showToast(`수정 실패: ${response.statusText}`, "error");
             }
-        } catch (error) {
-            alert("서버 연결 실패");
+        } catch {
+            showToast("서버 연결 실패", "error");
         }
     };
 
-    // ========================== 이미지 전달 ==========================
+    const handleCancel = () => setShowConfirm(false);
+
+    // ------------------ 이미지 전달 Listener ------------------
     useEffect(() => {
         const handleMessage = (event) => {
-            if (event.data && event.data.imageUrl) {
+            if (event.data?.imageUrl) {
                 setPreviewImageUrl(event.data.imageUrl);
             }
         };
@@ -136,159 +187,89 @@ function Page() {
         return () => window.removeEventListener("message", handleMessage);
     }, []);
 
-    // ========================== UI 스타일 ==========================
-    const containerStyle = {
-        border : "1px solid black",
-        maxWidth: '100%',
-        width: '80%',
-        minHeight: 'auto',
-        margin: '0 auto',
-        padding: '10px',
-        backgroundColor : 'white',
-    };
-
-    const titleInputStyle = {
-        width: '100%',
-        fontSize: '20px',
-        marginTop: '10px',
-        border : "1px solid black",
-        backgroundColor : 'white',
-        color : 'black',
-        borderRadius: '8px',
-    };
-
-    const mainContentStyle = {
-        display: 'flex',
-        flexWrap: 'wrap',
-        marginTop : '20px',
-        gap : '10px',
-    };
-
-    const previewImageStyle = {
-        flex: '0 0 30%',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '15px',
-    };
-
-    const imageAreaStyle = {
-        height: '90%',
-        width: '100%',
-        border: 'none',
-        backgroundColor : 'white',
-    };
-
-    const TextContentAreaStyle = {
-        flex: '1',
-        display: 'flex',
-        flexDirection: 'column',
-        paddingLeft: '10px',
-        gap: '10px',
-    };
-
-    const textInputStyle = {
-        border : "1px solid black",
-        backgroundColor: 'white',
-        minHeight: '200px',
-        maxHeight: '200px',
-        borderRadius: '8px',
-    };
-
-    const buttonContainerStyle = {
-        display: 'flex',
-        justifyContent: 'space-between',
-    };
-
-    const buttonStyle = {
-        margin: '10px',
-        border: '1px solid black',
-        borderRadius: '4px',
-        backgroundColor: 'white',
-        color: 'black',
-        paddingLeft: '5px',
-        paddingRight: '5px',
-    };
-
-    const textStyle = {
-        backgroundColor: 'black',
-        display: 'inline-block',
-        marginTop: '10px',
-        borderRadius: '8px',
-        paddingLeft: '5px',
-        paddingRight: '5px',
-        textAlign: 'center',
-        color: 'white',
-    };
-
-
     return (
-        <div style={containerStyle}>
+        <div className="edit-page-container">
+            <div className="edit-wrapper">
+                <h1 className="edit-title">게시물 수정</h1>
 
-            <div>
-                <div style={textStyle}>제목</div>
+                {/* 제목 입력 */}
+                <label className="label">제목</label>
                 <input
-                    type='text'
-                    placeholder='제목을 입력해 주세요.'
-                    style={titleInputStyle}
+                    type="text"
+                    className="edit-input"
+                    placeholder="제목을 입력해 주세요."
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                 />
-            </div>
 
-            <div style={mainContentStyle}>
+                <div className="edit-main-row">
+                    {/* 이미지 영역 */}
+                    <div className="edit-image-box">
+                        <div className="image-fixed-box">
+                            {isLoading ? (
+                                <div className="loading-spinner"></div>
+                            ) : imageUrl ? (
+                                <img src={imageUrl} className="edit-preview-img" />
+                            ) : (
+                                <div className="edit-img-placeholder">이미지 없음</div>
+                            )}
+                        </div>
 
-                <div style={previewImageStyle}>
-                    <div style={imageAreaStyle}>
-                        {imageUrl && (
-                            <img src={imageUrl} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-                        )}
+                        <div className="image-btn-center">
+                            <button className="btn-generate" onClick={handleSubmit} disabled={isLoading}>
+                                {isLoading ? "생성 중..." : "이미지 생성"}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 텍스트 입력 영역 */}
+                    <div className="edit-right">
+                        <label className="label">작품 설명</label>
+                        <textarea
+                            className="edit-textarea"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                        />
+
+                        <label className="label">작품 내용</label>
+                        <textarea
+                            className="edit-textarea"
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                        />
+
+                        <label className="label">카테고리</label>
+                        <select
+                            className="edit-select"
+                            value={categoryId}
+                            onChange={(e) => setCategory(e.target.value)}
+                        >
+                            <option value="">카테고리 선택</option>
+                            {categories.map((cat) => (
+                                <option key={cat.categoryId} value={cat.categoryId}>
+                                    {cat.name}
+                                </option>
+                            ))}
+                        </select>
+
+                        <div className="edit-btn-row">
+                            <button className="btn-update" onClick={finalCheck} disabled={isLoading}>
+                                게시물 수정
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                <div style={TextContentAreaStyle}>
-
-                    <div style={textStyle}>작품 설명</div>
-                    <textarea
-                        placeholder="작품 설명을 입력해 주세요."
-                        style={textInputStyle}
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                    />
-
-                    <div style={textStyle}>작품 내용</div>
-                    <textarea
-                        placeholder="작품 내용을 입력해 주세요."
-                        style={textInputStyle}
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                    />
-
-                    <div style={textStyle}>카테고리</div>
-                    <select
-                        style={{ backgroundColor: 'white', border : '1px solid black', borderRadius: '4px' }}
-                        value={categoryId}
-                        onChange={(e) => setCategory(Number(e.target.value))}
-                    >
-                        <option value="">카테고리 선택</option>
-
-                        {categories.map((cat) => (
-                            <option key={cat.categoryId} value={cat.categoryId}>
-                                {cat.name}
-                            </option>
-                        ))}
-                    </select>
-
-                    <div style={buttonContainerStyle}>
-                        <button style={buttonStyle} onClick={handleSubmit}>
-                            이미지 생성
-                        </button>
-
-                        <button style={buttonStyle} onClick={finalCheck}>
-                            게시물 수정
-                        </button>
-                    </div>
-                </div>
             </div>
+
+            {/* Confirm Modal */}
+            <ConfirmModal
+                show={showConfirm}
+                title="⚠️ 게시물 수정"
+                type="primary"
+                message="정말 수정하시겠습니까?"
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+            />
         </div>
     );
 }

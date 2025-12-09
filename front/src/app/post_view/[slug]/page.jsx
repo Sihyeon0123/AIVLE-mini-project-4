@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import "../../css/post_view.css";
 import api from "../../api/apiClient";
 
-import ConfirmModal from "@/app/components/ConfirmModal";   // ⭐ 추가
+import ConfirmModal from "@/app/components/ConfirmModal"; 
 
 function BookDetailsView({
     bookTitle,
@@ -89,7 +89,7 @@ export default function PostView(props) {
 
     const [isOwner, setIsOwner] = useState(false);
 
-    // ⭐ ConfirmModal 상태 관리
+    // ConfirmModal 상태 관리
     const [showConfirm, setShowConfirm] = useState(false);
     const [confirmResolver, setConfirmResolver] = useState(null);
 

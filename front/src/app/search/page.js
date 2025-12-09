@@ -138,8 +138,19 @@ export default function SearchPage() {
                 <div className="card-body py-2">
                   <h5 className="card-title book-title mb-0">{book.title}</h5>
                 </div>
+                <span
+                    className="badge bg-secondary ms-3"
+                    style={{
+                      fontSize: "0.75rem",
+                      borderRadius: "10px",
+                      padding: "4px 8px",
+                      opacity: 0.85,
+                    }}
+                  >
+                    {book.category || "미분류"}
+                  </span>
 
-                <div className="card-footer bg-transparent border-0 pt-0 pb-2">
+                <div className="card-footer bg-transparent border-0 pt-0 pb-">
                   <span className="read-more">자세히 보기 →</span>
                 </div>
               </div>
