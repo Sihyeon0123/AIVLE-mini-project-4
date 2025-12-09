@@ -138,20 +138,20 @@ function Page() {
 
     // ========================== UI 스타일 ==========================
     const containerStyle = {
+        border : "1px solid black",
         maxWidth: '100%',
         width: '80%',
         minHeight: 'auto',
         margin: '0 auto',
-        border: '1px solid black',
         padding: '10px',
-        backgroundColor : 'gray',
+        backgroundColor : 'white',
     };
 
     const titleInputStyle = {
         width: '100%',
         fontSize: '20px',
         marginTop: '10px',
-        border: 'none',
+        border : "1px solid black",
         backgroundColor : 'white',
         color : 'black',
         borderRadius: '8px',
@@ -174,7 +174,7 @@ function Page() {
     const imageAreaStyle = {
         height: '90%',
         width: '100%',
-        border: '1px solid black',
+        border: 'none',
         backgroundColor : 'white',
     };
 
@@ -187,6 +187,7 @@ function Page() {
     };
 
     const textInputStyle = {
+        border : "1px solid black",
         backgroundColor: 'white',
         minHeight: '200px',
         maxHeight: '200px',
@@ -264,7 +265,7 @@ function Page() {
 
                     <div style={textStyle}>카테고리</div>
                     <select
-                        style={{ backgroundColor: 'white' }}
+                        style={{ backgroundColor: 'white', border : '1px solid black', borderRadius: '4px' }}
                         value={categoryId}
                         onChange={(e) => setCategory(Number(e.target.value))}
                     >
