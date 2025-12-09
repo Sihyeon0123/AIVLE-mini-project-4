@@ -23,15 +23,22 @@ export default function MainNavbar() {
           <Nav.Link href="/">홈</Nav.Link>
           <Nav.Link href="/books">도서 목록</Nav.Link>
           <Nav.Link href="/rentals">대여 현황</Nav.Link>
-          <Form className="d-flex align-items-center ms-3">
+          <Form
+            className="d-flex align-items-center ms-3"
+            action="/search"
+            method="GET"
+          >
             <Row>
               <Col xs="auto">
                 <Form.Control
                   type="text"
+                  name="keyword" 
                   placeholder="도서 검색"
                   className="mr-sm-2"
+                  required  
                 />
               </Col>
+
               <Col xs="auto">
                 <Button type="submit" variant="primary">
                   검색
