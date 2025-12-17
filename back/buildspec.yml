@@ -1,0 +1,9 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ec2-user/back
+hooks:
+  AfterInstall:
+    - location: scripts/back-start.sh
+      timeout: 300
