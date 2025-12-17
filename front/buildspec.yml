@@ -4,15 +4,18 @@ phases:
   install:
     runtime-versions:
       nodejs: 20
+
   pre_build:
     commands:
+      - cd front
       - npm install
+
   build:
     commands:
       - npm run build
 
 artifacts:
-  base-directory: .
+  base-directory: front
   files:
     - .next/**/*
     - public/**/*
