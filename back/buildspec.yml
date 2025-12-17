@@ -8,6 +8,7 @@ phases:
   pre_build:
     commands:
       - cd back
+      - chmod +x gradlew
 
   build:
     commands:
