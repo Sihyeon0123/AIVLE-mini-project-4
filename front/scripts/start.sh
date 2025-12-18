@@ -1,16 +1,14 @@
 #!/bin/bash
 set -e
 
-APP_DIR="/home/ubuntu/app/front"
-PM2="/usr/bin/pm2"
-NODE="/usr/bin/node"
-NPM="/usr/bin/npm"
+cd /home/ubuntu/app
 
-cd "$APP_DIR"
+# pm2 없으면 실패하므로 안전 처리
+if ! command -v pm2 >/dev/null 2>&1; then
+  npm install -g pm2
+fi
 
-$NODE -v
-$NPM -v
-$PM2 -v
+# 기존 프로세스 있으면 재시작, 없으면 시작
+pm2 start ecosystem.config.js --env production || pm2 restart ecosystem.config.js
 
-$PM2 delete front || true
-$PM2 start npm --name "front" -- start
+pm2 save
