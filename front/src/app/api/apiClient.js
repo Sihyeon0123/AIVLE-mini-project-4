@@ -1,10 +1,5 @@
 import axios from "axios";
 
-/**
- * ✅ baseURL 제거
- * → 브라우저는 무조건 "같은 origin(프론트 서버)"으로 요청
- * → /api/** 는 Next.js 서버 API로 전달됨
- */
 const api = axios.create({
   baseURL: "",
   withCredentials: true,
@@ -70,10 +65,6 @@ api.interceptors.response.use(
         isRefreshing = true;
 
         try {
-          /**
-           * ✅ 백엔드 직접 호출 ❌
-           * ✅ 프론트 서버 API 호출 ⭕
-           */
           const res = await api.post("/api/auth/refresh");
 
           const authHeader = res.headers["authorization"];
