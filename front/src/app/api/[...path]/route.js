@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const BACKEND_BASE_URL = "http://10.0.2.205:8080";
 
 async function proxy(req, ctx) {
-  const { path = [] } = ctx.params ?? {};
+  const { path = [] } = await ctx.params;
   const joined = Array.isArray(path) ? path.join("/") : "";
 
   const url = `${BACKEND_BASE_URL}/api/${joined}${req.nextUrl.search}`;

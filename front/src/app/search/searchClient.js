@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Pagination from "@mui/material/Pagination";
 import "../css/books.css";
 
+import publicApi from "@/app/api/publicApiClient"; // ✅ 핵심
+
 export default function SearchClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -21,24 +23,22 @@ export default function SearchClient() {
   const size = 28;
 
   /* =======================================================
-     ⭐ 검색 API (GET + QueryString)
+     ⭐ 검색 API (PUBLIC API / JWT 불필요)
      ======================================================= */
   async function searchBooks(title, currentPage) {
     try {
       setLoading(true);
 
-      const url = `http://localhost:8080/api/books/search?title=${encodeURIComponent(
-        title
-      )}&page=${currentPage}&size=${size}`;
+      // ✅ localhost / fetch 제거
+      const res = await publicApi.get("/books/search", {
+        params: {
+          title,
+          page: currentPage,
+          size,
+        },
+      });
 
-      const res = await fetch(url);
-
-      if (!res.ok) {
-        console.error("검색 실패:", await res.text());
-        throw new Error("검색 API 실패");
-      }
-
-      const json = await res.json();
+      const json = res.data;
 
       setBooks(json.data?.books ?? []);
       setTotalItems(json.data?.totalItems ?? 0);
@@ -103,7 +103,9 @@ export default function SearchClient() {
         <div className="empty-state">
           <div className="empty-icon">📭</div>
           <div className="empty-title">검색 결과가 없습니다.</div>
-          <div className="empty-desc">다른 검색어로 다시 시도해 보세요.</div>
+          <div className="empty-desc">
+            다른 검색어로 다시 시도해 보세요.
+          </div>
         </div>
       )}
 

@@ -38,7 +38,7 @@ export default function Home() {
       );
 
       // ✅ public API 클라이언트 사용
-      const res = await publicApi.get("/api/books", {
+      const res = await publicApi.get("/books", {
         params: {
           page: currentPage,
           size,
