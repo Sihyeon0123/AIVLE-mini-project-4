@@ -7,6 +7,10 @@ files:
     file_exists_behavior: OVERWRITE
 
 hooks:
+  BeforeInstall:
+    - location: scripts/chown.sh
+      runas: root
+
   ApplicationStart:
     - location: scripts/start.sh
-      runas: root
+      runas: ubuntu
