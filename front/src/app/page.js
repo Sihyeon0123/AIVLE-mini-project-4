@@ -10,27 +10,29 @@ export default function Home() {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // 페이지 상태
   const [page, setPage] = useState(1);
   const size = 28;
 
-  // AccessToken 보유 여부
   const [hasToken, setHasToken] = useState(false);
 
-  // mount 시 토큰 체크
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     setHasToken(!!token);
   }, []);
 
-  // 도서 목록 조회
+  // ==========================
+  // ✅ 도서 목록 조회 (수정 완료)
+  // ==========================
   async function fetchBooks(currentPage) {
     try {
       setLoading(true);
-      const baseURL = api.defaults.baseURL ?? "";
-      const url = `${baseURL}/books?page=${currentPage}&size=${size}`;
-      console.log("📡 요청 URL:", url);
-      const res = await api.get("/books", {
+
+      console.log(
+        "📡 요청 URL:",
+        `/api/books?page=${currentPage}&size=${size}`
+      );
+
+      const res = await api.get("/api/books", {
         params: {
           page: currentPage,
           size,
@@ -43,13 +45,12 @@ export default function Home() {
       setBooks(list);
       setTotalItems(data?.totalItems ?? 0);
     } catch (err) {
-      console.error("도서 목록 불러오기 실패:", err);
+      console.error("❌ 도서 목록 불러오기 실패:", err);
     } finally {
       setLoading(false);
     }
   }
 
-  // page 변경 시 재조회
   useEffect(() => {
     fetchBooks(page);
   }, [page]);
@@ -58,7 +59,6 @@ export default function Home() {
 
   return (
     <main className="container py-5 home-container">
-      {/* 헤더 */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
         <h2 className="section-title m-0">📚 도서 목록</h2>
 
@@ -78,7 +78,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 로딩 */}
       {loading && (
         <div className="d-flex align-items-center gap-2 text-secondary">
           <div className="spinner-border spinner-border-sm" role="status" />
@@ -86,7 +85,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* 빈 화면 */}
       {!loading && books.length === 0 && (
         <div className="empty-state">
           <div className="empty-icon">📭</div>
@@ -95,7 +93,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* 도서 목록 */}
       {!loading && books.length > 0 && (
         <div className="row g-4">
           {books.map((book) => (
@@ -106,7 +103,9 @@ export default function Home() {
               <div
                 className="book-card border shadow-sm"
                 role="button"
-                onClick={() => (window.location.href = `/post_view/${book.bookId}`)}
+                onClick={() =>
+                  (window.location.href = `/post_view/${book.bookId}`)
+                }
               >
                 <div className="book-thumb">
                   <img
@@ -116,7 +115,9 @@ export default function Home() {
                     loading="lazy"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
-                      e.currentTarget.parentElement?.classList.add("thumb-fallback");
+                      e.currentTarget.parentElement?.classList.add(
+                        "thumb-fallback"
+                      );
                     }}
                   />
                 </div>
@@ -126,15 +127,7 @@ export default function Home() {
                     {book.title || "제목 없음"}
                   </h5>
 
-                  <span
-                    className="badge bg-secondary ms-2"
-                    style={{
-                      fontSize: "0.75rem",
-                      borderRadius: "10px",
-                      padding: "4px 8px",
-                      opacity: 0.85,
-                    }}
-                  >
+                  <span className="badge bg-secondary ms-2">
                     {book.category || "미분류"}
                   </span>
                 </div>
@@ -148,7 +141,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* 페이지네이션 */}
       {!loading && totalItems > 0 && (
         <div className="pagination-container d-flex justify-content-center">
           <Pagination
@@ -164,3 +156,4 @@ export default function Home() {
     </main>
   );
 }
+ 
