@@ -1,5 +1,5 @@
-// app/api/openaiClient.ts
-import api from "@/lib/api/axios";
+// app/api/openaiClient.js
+import api from "@/app/api/apiClient";
 
 /**
  * 사용자 API Key 조회 (JWT → 개인 API Key)
@@ -7,11 +7,8 @@ import api from "@/lib/api/axios";
 export async function fetchUserApiKey() {
   if (typeof window === "undefined") return null;
 
-  const accessToken = localStorage.getItem("accessToken");
-  if (!accessToken) return null;
-
   try {
-    // ✅ baseURL + axios 인스턴스 재사용
+    // apiClient 사용 (baseURL + interceptor 적용)
     const res = await api.get("/auth/user-info");
 
     const apiKey = res.headers["api-key"];
