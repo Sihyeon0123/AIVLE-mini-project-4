@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,7 @@ import "../css/edit_post.css";
 import Toast from "@/app/components/Toast";
 import ConfirmModal from "@/app/components/ConfirmModal";
 import { generateCoverImage } from "@/app/api/openaiClient";
+import api from "@/app/api/apiClient";
 
 function Page() {
     const router = useRouter();
@@ -16,7 +17,7 @@ function Page() {
     const [description, setDescription] = useState("");
     const [content, setContent] = useState("");
 
-    // categoryId + name 저장
+    // categoryId + name
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [categories, setCategories] = useState([]);
 
@@ -24,7 +25,7 @@ function Page() {
     const [isLoading, setIsLoading] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
 
-    // --------------------- 토스트 함수 ---------------------
+    // --------------------- 토스트 ---------------------
     const showToast = (msg, type = "info") => {
         window.dispatchEvent(
             new CustomEvent("show-toast", {
@@ -33,7 +34,7 @@ function Page() {
         );
     };
 
-    // ------------------- 토큰 없는 접근 차단 -------------------
+    // ------------------- 인증 체크 -------------------
     useEffect(() => {
         const token = localStorage.getItem("accessToken");
         if (!token) {
@@ -42,15 +43,15 @@ function Page() {
         }
     }, []);
 
-    // --------------------- 카테고리 불러오기 ---------------------
+    // --------------------- 카테고리 조회 ---------------------
     useEffect(() => {
         const loadCategories = async () => {
             try {
-                const res = await fetch("http://localhost:8080/api/categories");
-                const json = await res.json();
+                const res = await api.get("/categories");
+                const data = res.data?.data;
 
-                if (Array.isArray(json.data)) {
-                    setCategories(json.data);
+                if (Array.isArray(data)) {
+                    setCategories(data);
                 }
             } catch (err) {
                 showToast("카테고리 불러오기 실패", "danger");
@@ -91,7 +92,7 @@ function Page() {
         showToast("이미지가 생성되었습니다!", "success");
     };
 
-    // -------------------- 최종 등록 전 확인 --------------------
+    // -------------------- 등록 전 확인 --------------------
     const finalCheck = () => {
         if (!title || !description || !content || !selectedCategory || !imageUrl) {
             showToast("모든 값을 입력해 주세요!", "warning");
@@ -101,15 +102,9 @@ function Page() {
         setShowConfirm(true);
     };
 
-    // -------------------- 등록 처리 --------------------
+    // -------------------- 게시물 등록 --------------------
     const handleConfirm = async () => {
         setShowConfirm(false);
-
-        const jwt = localStorage.getItem("accessToken");
-        if (!jwt) {
-            showToast("로그인이 필요합니다.", "danger");
-            return;
-        }
 
         const finalPostData = {
             title,
@@ -121,23 +116,16 @@ function Page() {
         };
 
         try {
-            const response = await fetch("http://localhost:8080/api/books/create", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${jwt}`,
-                },
-                body: JSON.stringify(finalPostData),
-            });
+            const response = await api.post("/books/create", finalPostData);
 
-            if (response.ok) {
+            if (response.status === 200 || response.status === 201) {
                 showToast("게시물이 성공적으로 등록되었습니다!", "success");
 
                 setTimeout(() => {
                     router.push("/");
                 }, 800);
             } else {
-                showToast(`등록 실패: ${response.statusText}`, "danger");
+                showToast("등록 실패", "danger");
             }
         } catch (error) {
             showToast("서버 통신 오류", "danger");
@@ -151,7 +139,7 @@ function Page() {
             <div className="edit-wrapper">
                 <h1 className="edit-title">게시물 등록</h1>
 
-                {/* 제목 입력 */}
+                {/* 제목 */}
                 <label className="label">제목</label>
                 <input
                     type="text"
@@ -185,7 +173,7 @@ function Page() {
                         </div>
                     </div>
 
-                    {/* 텍스트 입력 영역 */}
+                    {/* 입력 영역 */}
                     <div className="edit-right">
                         <label className="label">작품 설명</label>
                         <textarea
@@ -206,11 +194,7 @@ function Page() {
                             className="edit-select"
                             onChange={(e) => {
                                 const index = e.target.selectedIndex - 1;
-                                if (index >= 0) {
-                                    setSelectedCategory(categories[index]);
-                                } else {
-                                    setSelectedCategory(null);
-                                }
+                                setSelectedCategory(index >= 0 ? categories[index] : null);
                             }}
                         >
                             <option value="">카테고리 선택</option>

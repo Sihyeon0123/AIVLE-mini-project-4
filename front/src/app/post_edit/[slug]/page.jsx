@@ -1,13 +1,12 @@
-"use client";
+'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import React, { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
 import "../../css/edit_post.css";
 
 import ConfirmModal from "@/app/components/ConfirmModal";
-
 import { generateCoverImage } from "@/app/api/openaiClient";
+import api from "@/app/api/apiClient";
 
 function Page() {
     const router = useRouter();
@@ -31,33 +30,24 @@ function Page() {
         );
     };
 
-    // [추가] --- 토큰 없는 경우 접근 차단 ---
+    // ------------------ 토큰 없는 경우 접근 차단 ------------------
     useEffect(() => {
         const token = localStorage.getItem("accessToken");
         if (!token) {
-            window.dispatchEvent(
-                new CustomEvent("show-toast", {
-                    detail: {
-                    msg: "로그인이 필요한 페이지입니다.",
-                    type: "danger",
-                    },
-                })
-            );
-
+            showToast("로그인이 필요한 페이지입니다.", "danger");
             router.replace("/");
-            return;
         }
     }, []);
-    // ---------------------------------------------------------
 
     // ------------------ 카테고리 불러오기 ------------------
     useEffect(() => {
         const loadCategories = async () => {
             try {
-                const res = await fetch("http://localhost:8080/api/categories");
-                const json = await res.json();
-                if (Array.isArray(json.data)) setCategories(json.data);
-            } catch (err) {
+                const res = await api.get("/categories");
+                if (Array.isArray(res.data?.data)) {
+                    setCategories(res.data.data);
+                }
+            } catch {
                 showToast("카테고리 불러오기 실패", "error");
             }
         };
@@ -71,20 +61,19 @@ function Page() {
 
         const loadPostData = async () => {
             try {
-                const res = await fetch(`http://localhost:8080/api/books/detail/${slug}`);
-                const json = await res.json();
+                const res = await api.get(`/books/detail/${slug}`);
 
-                if (json.status === "success") {
-                    const d = json.data;
+                if (res.data?.status === "success") {
+                    const d = res.data.data;
                     setTitle(d.title);
                     setDescription(d.description);
                     setContent(d.content);
-                    setCategory(d.categoryId);
+                    setCategory(String(d.categoryId));
                     setPreviewImageUrl(d.imageUrl);
                 } else {
                     showToast("게시글 불러오기 실패", "error");
                 }
-            } catch (err) {
+            } catch {
                 showToast("서버 오류로 게시글을 불러올 수 없습니다.", "error");
             }
         };
@@ -123,25 +112,18 @@ function Page() {
         showToast("이미지가 성공적으로 생성되었습니다!", "success");
     };
 
-    // ------------------ 최종 게시 확인 모달 ------------------
+    // ------------------ 수정 전 확인 ------------------
     const finalCheck = () => {
         if (!title || !description || !content || !categoryId || !imageUrl) {
             showToast("모든 값을 입력해 주세요!", "error");
             return;
         }
-
         setShowConfirm(true);
     };
 
-    // ------------------ 최종 게시 실제 처리 ------------------
+    // ------------------ 게시물 수정 처리 ------------------
     const handleConfirm = async () => {
         setShowConfirm(false);
-
-        const jwt = localStorage.getItem("accessToken");
-        if (!jwt) {
-            showToast("로그인이 필요합니다.", "error");
-            return;
-        }
 
         const finalPostData = {
             title,
@@ -152,22 +134,13 @@ function Page() {
         };
 
         try {
-            const response = await fetch(`http://localhost:8080/api/books/update/${slug}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${jwt}`,
-                },
-                body: JSON.stringify(finalPostData),
-            });
+            const res = await api.put(`/books/update/${slug}`, finalPostData);
 
-            if (response.ok) {
+            if (res.status === 200) {
                 showToast("게시물이 성공적으로 수정되었습니다!", "success");
-                setTimeout(() => {
-                    window.location.href = "/";
-                }, 800);
+                setTimeout(() => router.push("/"), 800);
             } else {
-                showToast(`수정 실패: ${response.statusText}`, "error");
+                showToast("수정 실패", "error");
             }
         } catch {
             showToast("서버 연결 실패", "error");
@@ -192,18 +165,15 @@ function Page() {
             <div className="edit-wrapper">
                 <h1 className="edit-title">게시물 수정</h1>
 
-                {/* 제목 입력 */}
                 <label className="label">제목</label>
                 <input
                     type="text"
                     className="edit-input"
-                    placeholder="제목을 입력해 주세요."
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                 />
 
                 <div className="edit-main-row">
-                    {/* 이미지 영역 */}
                     <div className="edit-image-box">
                         <div className="image-fixed-box">
                             {isLoading ? (
@@ -222,7 +192,6 @@ function Page() {
                         </div>
                     </div>
 
-                    {/* 텍스트 입력 영역 */}
                     <div className="edit-right">
                         <label className="label">작품 설명</label>
                         <textarea
@@ -261,7 +230,6 @@ function Page() {
                 </div>
             </div>
 
-            {/* Confirm Modal */}
             <ConfirmModal
                 show={showConfirm}
                 title="⚠️ 게시물 수정"

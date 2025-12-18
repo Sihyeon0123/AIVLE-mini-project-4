@@ -1,6 +1,6 @@
 'use client';
 
-import axios from 'axios';
+import api from "@/app/api/apiClient";
 
 /**
  * 로그인 요청 API
@@ -10,20 +10,17 @@ export async function loginRequest(id, pw) {
     throw new Error('아이디와 비밀번호를 모두 입력해주세요.');
   }
 
-  const loginRes = await axios.post(
-    'http://localhost:8080/api/auth/login',
-    { id, pw }
-  );
+  // baseURL, withCredentials, interceptor 자동 적용
+  const loginRes = await api.post('/auth/login', { id, pw });
 
   const result = loginRes.data;
 
-  // 헤더에서 accessToken 추출
-  let authHeader = loginRes.headers['authorization'];
-  let accessToken = null;
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    accessToken = authHeader.replace('Bearer ', '');
-  }
+  // Authorization 헤더에서 accessToken 추출
+  const authHeader = loginRes.headers['authorization'];
+  const accessToken =
+    authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.replace('Bearer ', '')
+      : null;
 
   return {
     result,

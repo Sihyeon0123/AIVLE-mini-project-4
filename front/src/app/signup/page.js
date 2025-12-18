@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import api from '@/app/api/apiClient';
 
 export default function SignupPage() {
   const [id, setId] = useState('');
@@ -10,9 +11,9 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [apiKey, setApiKey] = useState('');
 
-  // Bootstrap Alert 상태 (실패용)
+  // Bootstrap Alert 상태
   const [alertMsg, setAlertMsg] = useState('');
-  const [alertType, setAlertType] = useState('');
+  const [alertType, setAlertType] = useState('danger');
   const [showAlert, setShowAlert] = useState(false);
 
   const router = useRouter();
@@ -21,7 +22,6 @@ export default function SignupPage() {
     setAlertMsg(msg);
     setAlertType(type);
     setShowAlert(true);
-
     setTimeout(() => setShowAlert(false), 3000);
   };
 
@@ -43,38 +43,33 @@ export default function SignupPage() {
     }
 
     try {
-      const headers = { 'Content-Type': 'application/json' };
-
+      const headers = {};
       if (trimmedApiKey) {
         headers['API-KEY'] = trimmedApiKey;
       }
 
-      const res = await fetch('http://localhost:8080/api/auth/signup', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
+      const res = await api.post(
+        '/auth/signup',
+        {
           id: trimmedId,
           pw,
           name: trimmedName,
-        }),
-      });
+        },
+        { headers }
+      );
 
-      const result = await res.json();
+      const result = res.data;
 
-      // 성공 시: 회원가입 페이지에서는 Alert를 띄우지 않음
-      if (res.ok && result.status === 'success') {
+      if (res.status === 200 && result.status === 'success') {
         sessionStorage.setItem(
           'signupSuccessMsg',
           result.message || '회원가입 성공!'
         );
-
         router.push('/login');
         return;
       }
 
-      // 실패 시에만 Alert 표시
       showBootstrapAlert(result.message || '회원가입 실패');
-
     } catch (error) {
       console.error('회원가입 요청 오류:', error);
       showBootstrapAlert('서버와 통신 중 오류가 발생했습니다.');
@@ -86,7 +81,6 @@ export default function SignupPage() {
       <div className="card">
         <h1 className="card-title">회원가입</h1>
 
-        {/* 실패 메시지용 Bootstrap Alert */}
         {showAlert && (
           <div className={`alert alert-${alertType}`} role="alert">
             {alertMsg}

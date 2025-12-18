@@ -22,7 +22,6 @@ function BookDetailsView({
     return (
         <div className="container mt-4 d-flex justify-content-center">
             <div className="detail-wrapper">
-
                 <h1 className="detail-title-centered">{bookTitle}</h1>
 
                 <div className="meta-block">
@@ -43,7 +42,6 @@ function BookDetailsView({
                 <hr className="content-divider2" />
 
                 <div className="detail-main-row">
-
                     {coverImgUrl && (
                         <div className="detail-cover">
                             <img src={coverImgUrl} alt="cover" className="cover-img" />
@@ -67,7 +65,6 @@ function BookDetailsView({
 
                 <h5 className="fw-bold mb-3">📖 상세 내용</h5>
                 <p className="detail-paragraph">{content}</p>
-
             </div>
         </div>
     );
@@ -89,7 +86,7 @@ export default function PostView(props) {
 
     const [isOwner, setIsOwner] = useState(false);
 
-    // ConfirmModal 상태 관리
+    // ConfirmModal 상태
     const [showConfirm, setShowConfirm] = useState(false);
     const [confirmResolver, setConfirmResolver] = useState(null);
 
@@ -109,16 +106,19 @@ export default function PostView(props) {
         setShowConfirm(false);
     };
 
+    // ------------------ 현재 사용자 ID 조회 ------------------
     const getCurrentUserId = async () => {
-        const token = localStorage.getItem("accessToken");
-        if (!token) return "";
-        const response = await api.get(`http://localhost:8080/api/auth/user-info`);
-        return response.status !== 200 ? "" : String(response.data.id);
+        try {
+            const res = await api.get("/auth/user-info");
+            return res.status === 200 ? String(res.data.id) : "";
+        } catch {
+            return "";
+        }
     };
 
-    const checkCurrentUserIs = async (id) => {
+    const checkCurrentUserIsOwner = async (ownerId) => {
         const currentUserId = await getCurrentUserId();
-        return currentUserId === String(id);
+        return currentUserId === String(ownerId);
     };
 
     const formatDate = (isoString) => {
@@ -129,10 +129,11 @@ export default function PostView(props) {
                `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     };
 
+    // ------------------ 도서 상세 조회 ------------------
     const getBookDetails = async (idx) => {
         try {
-            const response = await fetch(`http://localhost:8080/api/books/detail/${idx}`);
-            const body = await response.json();
+            const res = await api.get(`/books/detail/${idx}`);
+            const body = res.data;
 
             if (body.status === "success") {
                 setBookData({
@@ -145,7 +146,7 @@ export default function PostView(props) {
                     content: body.data.content
                 });
 
-                const ownership = await checkCurrentUserIs(body.data.ownerUser);
+                const ownership = await checkCurrentUserIsOwner(body.data.ownerUser);
                 setIsOwner(ownership);
             } else {
                 alert("존재하지 않는 도서입니다.");
@@ -159,23 +160,23 @@ export default function PostView(props) {
 
     const editBook = () => router.push(`/post_edit/${slug}`);
 
+    // ------------------ 도서 삭제 ------------------
     const deleteBook = async () => {
-        const ownership = await checkCurrentUserIs(bookData.owner_id);
+        const ownership = await checkCurrentUserIsOwner(bookData.owner_id);
         if (!ownership) return alert("본인이 등록한 도서만 삭제할 수 있습니다.");
 
         const ok = await showConfirmModal();
         if (!ok) return;
 
         try {
-            await api.delete(`http://localhost:8080/api/books/delete/${slug}`);
+            await api.delete(`/books/delete/${slug}`);
+
             window.dispatchEvent(
                 new CustomEvent("show-toast", {
-                    detail: {
-                    msg: "삭제되었습니다.",
-                    type: "success",
-                    },
+                    detail: { msg: "삭제되었습니다.", type: "success" },
                 })
             );
+
             router.push('/');
         } catch {
             alert("삭제 중 오류가 발생했습니다.");
@@ -188,7 +189,6 @@ export default function PostView(props) {
 
     return (
         <>
-            {/* ⭐ 삭제 확인 모달 */}
             <ConfirmModal
                 show={showConfirm}
                 title="⚠️ 도서 삭제"

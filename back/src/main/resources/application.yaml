@@ -5,7 +5,7 @@ spring:
     name: jpa
   datasource:
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:./library
+    url: jdbc:h2:file:/home/ubuntu/app/library
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
   h2:
