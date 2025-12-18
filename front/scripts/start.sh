@@ -1,19 +1,20 @@
 #!/bin/bash
 set -e
 
-APP_DIR=/home/ubuntu/app
+APP_DIR="/home/ubuntu/app"
+NODE="/usr/bin/node"
+NPM="/usr/bin/npm"
 
-cd $APP_DIR
+cd "$APP_DIR"
 
-# (선택) 기존 프로세스 정리 — 없어도 에러 안 나게
-pm2 delete front || true
+# 실행 환경 확인 (로그용)
+$NODE -v
+$NPM -v
 
-# 운영 환경에서는 build 결과를 쓰므로 install은 보통 불필요
-# 만약 꼭 필요하다면 남겨도 됨
-npm install --omit=dev
+# 혹시 남아 있는 프로세스 정리
+pkill -f "next start" || true
 
 # Next.js 실행
-pm2 start npm --name "front" -- start
+nohup $NPM run start > app.log 2>&1 &
 
-# 재부팅 시 자동 복구
-pm2 save
+exit 0

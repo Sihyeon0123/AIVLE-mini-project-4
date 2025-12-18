@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
-# PM2 프로세스 제거
-pm2 delete front || true
+APP_DIR="/home/ubuntu/app"
 
-# 혹시 남아 있을 수 있는 node 프로세스 정리 (보험)
+cd "$APP_DIR"
+
+# 실행 중인 Next.js 종료
 pkill -f "next start" || true
+
+exit 0
