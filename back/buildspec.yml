@@ -7,12 +7,12 @@ phases:
 
   pre_build:
     commands:
+      - cd back
       - chmod +x gradlew
       - chmod +x scripts/*.sh
 
   build:
     commands:
-      - cd back
       - ./gradlew clean build -x test
 
 artifacts:
