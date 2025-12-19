@@ -32,7 +32,7 @@ jwt:
 
 # S3 업로드용 설정 추가
 app:
-  base-url: http://localhost:8080
+  base-url: http://54.255.204.194
   s3:
     bucket: user045-book
     region: ap-southeast-1
