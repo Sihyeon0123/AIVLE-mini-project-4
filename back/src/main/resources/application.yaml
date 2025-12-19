@@ -27,5 +27,17 @@ jwt:
   # Refresh Token 만료 시간 (2주 = 14 * 24 * 60 * 60 * 1000ms)
   refresh-expiration: 1209600000
 
-# external: 
+# external:
 #   api-key: ${EXTERNAL_API_KEY}
+
+# S3 업로드용 설정 추가
+app:
+  base-url: http://localhost:8080
+  s3:
+    bucket: user045-book
+    region: ap-southeast-1
+    prefix: bookcovers/
+    return-mode: PUBLIC_URL
+    public-base-url: https://user045-book.s3.ap-southeast-1.amazonaws.com
+    profile: default   # 추가 (로컬/서버에서 aws configure로 만든 기본 프로필)
+
