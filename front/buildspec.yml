@@ -19,10 +19,5 @@ phases:
 artifacts:
   base-directory: front
   files:
-    - package.json
-    - package-lock.json
-    - node_modules/**/*
-    - .next/**/*
-    - public/**/*
-    - appspec.yml
-    - scripts/**/*
+    - '**/*'
+
