@@ -1,27 +1,16 @@
 #!/bin/bash
 set -e
 
-APP_DIR=/home/ubuntu/app
+APP_DIR=/home/ubuntu/app/front
 PORT=3000
 
-echo "=== stop existing next-server ==="
-pkill -9 -f next-server || true
-pkill -9 -f server.js || true
+echo "=== stop existing app ==="
+pm2 delete front || true
 
-sleep 2
-
-echo "=== check port ==="
-if ss -tlnp | grep -q ":${PORT}"; then
-  echo "❌ port ${PORT} still in use"
-  ss -tlnp | grep ${PORT}
-  exit 1
-fi
-
-echo "=== start next.js standalone ==="
+echo "=== start next.js with pm2 ==="
 cd ${APP_DIR}
 
 export NODE_ENV=production
-export PORT=3000
+export PORT=${PORT}
 
-# ★ 절대 & 붙이지 마세요
-node .next/standalone/server.js
+pm2 start npm --name front -- run start
