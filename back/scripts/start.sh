@@ -1,30 +1,26 @@
 #!/bin/bash
 set -e
 
-export JWT_SECRET="SecretKey123456SecretKey123456SecretKey123456"
-export DB_USERNAME="sa"
-export DB_PASSWORD="1234"
-
 APP_DIR=/home/ubuntu/app
-LOG_FILE=${APP_DIR}/app.log
+LOG_FILE=$APP_DIR/app.log
 
-cd "$APP_DIR" || exit 1
+cd $APP_DIR
 
-echo "=== Stop existing app ===" | tee -a "$LOG_FILE"
-PID=$(pgrep -f 'java.*\.jar' || true)
+echo "=== Stop existing app ==="
+PID=$(pgrep -f 'java.*\.war' || true)
 if [ -n "$PID" ]; then
   kill -15 $PID
   sleep 5
 fi
 
-echo "=== Find executable JAR ===" | tee -a "$LOG_FILE"
-JAR_FILE=$(ls *.jar 2>/dev/null | head -n 1)
+echo "=== Find executable WAR ==="
+WAR_FILE=$(ls *.war | grep -v plain | head -n 1)
 
-if [ -z "$JAR_FILE" ]; then
-  echo "❌ Executable JAR not found" | tee -a "$LOG_FILE"
-  ls -al "$APP_DIR" | tee -a "$LOG_FILE"
+if [ -z "$WAR_FILE" ]; then
+  echo "❌ Executable WAR not found"
+  ls -l
   exit 1
 fi
 
-echo "=== Start JAR: $JAR_FILE ===" | tee -a "$LOG_FILE"
-nohup /usr/bin/java -jar "$JAR_FILE" >> "$LOG_FILE" 2>&1 &
+echo "=== Start application: $WAR_FILE ==="
+nohup java -jar "$WAR_FILE" > "$LOG_FILE" 2>&1 &
