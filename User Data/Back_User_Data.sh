@@ -13,7 +13,7 @@ apt-get upgrade -y
 apt-get install -y curl git wget unzip
 
 #################################
-# Java 17 설치 (Spring Boot 권장)
+# Java 17 설치
 #################################
 apt-get install -y openjdk-17-jdk
 
@@ -49,5 +49,43 @@ chown -R ubuntu:ubuntu /home/ubuntu/app
 mkdir -p /var/log/spring
 chown -R ubuntu:ubuntu /var/log/spring
 
+#################################
+# CloudWatch Agent 설치
+#################################
+cd /tmp
+wget -q https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+dpkg -i amazon-cloudwatch-agent.deb || apt-get -f install -y
+
+#################################
+# CloudWatch Logs 설정 
+#################################
+mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+
+cat <<'EOF' > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/home/ubuntu/app/app.log",
+            "log_group_name": "/a086023/ec2/backend/spring/application",
+            "log_stream_name": "{instance_id}",
+            "timezone": "Local"
+          }
+        ]
+      }
+    }
+  }
+}
+EOF
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config \
+  -m ec2 \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+  -s
+
+systemctl enable amazon-cloudwatch-agent
 
 echo "Backend EC2 User Data setup completed"
