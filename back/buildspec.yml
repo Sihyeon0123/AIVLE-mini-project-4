@@ -20,3 +20,9 @@ artifacts:
     - back/appspec.yml
     - back/scripts/**/*
     - back/build/libs/*.war
+
+post_build:
+  commands:
+    - cd back/build/libs
+    - rm -f *-plain.war
+    - cd -
