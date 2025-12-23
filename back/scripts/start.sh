@@ -1,5 +1,3 @@
-start.sh 롤백 코드
-
 #!/bin/bash
 set -e
 
