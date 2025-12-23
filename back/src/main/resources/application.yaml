@@ -42,19 +42,3 @@ app:
     prefix: bookcovers/
     return-mode: PUBLIC_URL
     public-base-url: https://user045-book.s3.ap-southeast-1.amazonaws.com
-
-spring:
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/library?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: root1234
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
