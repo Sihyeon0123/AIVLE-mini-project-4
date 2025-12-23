@@ -204,7 +204,7 @@
 
 ### 1️. 전체 클라우드 아키텍처 구성
 
-![System Architecture Diagram](./docs/cloud/cloud_architecture.png)
+![System Architecture Diagram](./docs/cloud/AWS_System_Architecture.png)
 
 AWS 환경에서 **ALB – EC2 – RDS**를 중심으로 한 클라우드 아키텍처를 구성했습니다.  
 외부 사용자의 요청은 Application Load Balancer를 통해 유입되며,  
