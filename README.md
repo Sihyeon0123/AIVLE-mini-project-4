@@ -138,9 +138,6 @@
 - **도서 등록**  
   ![도서 등록](docs/front_ui/gif_2.gif)
 
-- **도서 AI 표지 생성**  
-  ![도서 AI 표지 생성](docs/front_ui/gif_1.gif)
-
 - **도서 수정**  
   ![도서 수정](docs/front_ui/도서_수정.gif)
 

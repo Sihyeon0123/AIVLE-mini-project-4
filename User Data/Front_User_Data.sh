@@ -54,7 +54,7 @@ server {
     }
 
     location ^~ /api/ {
-        proxy_pass http://BACKEND-ALB-DNS/api/;
+        proxy_pass http://internal-ai1018-backend-internal-alb-985356161.ap-southeast-1.elb.amazonaws.com/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -94,25 +94,25 @@ cat <<'EOF' > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
         "collect_list": [
           {
             "file_path": "/var/log/nginx/access.log",
-            "log_group_name": "/a086023/ec2/frontend/nginx/access",
+            "log_group_name": "/ai1018/ec2/frontend/nginx/access",
             "log_stream_name": "{instance_id}",
             "timezone": "Local"
           },
           {
             "file_path": "/var/log/nginx/error.log",
-            "log_group_name": "/a086023/ec2/frontend/nginx/error",
+            "log_group_name": "/ai1018/ec2/frontend/nginx/error",
             "log_stream_name": "{instance_id}",
             "timezone": "Local"
           },
           {
             "file_path": "/home/ubuntu/.pm2/logs/*-out.log",
-            "log_group_name": "/a086023/ec2/frontend/node/stdout",
+            "log_group_name": "/ai1018/ec2/frontend/node/stdout",
             "log_stream_name": "{instance_id}",
             "timezone": "Local"
           },
           {
             "file_path": "/home/ubuntu/.pm2/logs/*-error.log",
-            "log_group_name": "/a086023/ec2/frontend/node/stderr",
+            "log_group_name": "/ai1018/ec2/frontend/node/stderr",
             "log_stream_name": "{instance_id}",
             "timezone": "Local"
           }

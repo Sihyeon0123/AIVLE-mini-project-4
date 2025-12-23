@@ -69,7 +69,7 @@ cat <<'EOF' > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
         "collect_list": [
           {
             "file_path": "/home/ubuntu/app/app.log",
-            "log_group_name": "/a086023/ec2/backend/spring/application",
+            "log_group_name": "/ai1018/ec2/backend/spring/application",
             "log_stream_name": "{instance_id}",
             "timezone": "Local"
           }
