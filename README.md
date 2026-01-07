@@ -258,3 +258,34 @@ GitHub 저장소에 코드가 푸시되면 AWS CodePipeline이 자동으로 실�
 
 ---
 
+### 4. CloudWatch 기반 모니터링 구성
+
+![CI/CD Pipeline Diagram](./docs/cloud/CloudWatch_Dashboard.png)
+![CI/CD Pipeline Diagram](./docs/cloud/CloudWatch.gif)
+
+AWS CloudWatch를 활용해 프론트엔드 / 백엔드 EC2 인스턴스와 각 ALB의 상태를 실시간으로 모니터링할 수 있도록 대시보드를 구성했습니다.  
+이를 통해 서비스 요청 흐름, 서버 자원 사용량, 응답 성능 및 오류 발생 여부를 한눈에 확인할 수 있도록 했습니다.
+
+CloudWatch 대시보드는 다음 지표들로 구성됩니다.
+
+- **CPUUtilization**
+  - Front / Back EC2 인스턴스의 CPU 사용률을 분리하여 모니터링
+  - 요청 발생 시 CPU 사용률 변화 추이를 확인하여 서버 부하 상태를 파악
+
+- **RequestCount**
+  - Front ALB와 Back ALB의 요청 수를 각각 모니터링
+  - 프론트엔드 → 백엔드로 이어지는 요청 흐름이 정상적으로 동작하는지 확인
+
+- **TargetResponseTime**
+  - ALB Target Group 기준 평균 응답 시간 측정
+  - 서비스 요청에 대한 처리 지연 여부를 실시간으로 확인
+
+- **HTTPCode_Target_5XX_Count**
+  - 서버 오류(5XX) 발생 여부를 모니터링
+  - 장애 발생 시 빠른 인지 및 원인 분석을 위한 지표로 활용
+
+이를 통해 배포 이후에도 서비스의 성능과 안정성을 지속적으로 관찰할 수 있는 운영 환경을 구축했으며,  
+향후 Auto Scaling 기준 조정이나 CloudWatch Alarm 연계를 통해  
+보다 체계적인 운영 및 장애 대응이 가능한 구조로 확장할 수 있도록 설계했습니다.
+
+---
